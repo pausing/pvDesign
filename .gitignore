@@ -15,6 +15,10 @@ frontend/.vite/
 backend/data/index.json
 backend/data/projects/*.json
 
+# Deploy secrets
+.env
+.env.local
+
 # OS / IDE
 .DS_Store
 .idea/

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from threading import Lock
 from typing import Optional
@@ -9,7 +10,8 @@ from uuid import uuid4
 from app.models import Project, ProjectSummary
 from app.seed import demo_project, utc_now
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_default_data = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = Path(os.environ.get("PVDES_DATA_DIR") or _default_data)
 PROJECTS_DIR = DATA_DIR / "projects"
 INDEX_PATH = DATA_DIR / "index.json"
 
