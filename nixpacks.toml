@@ -1,0 +1,22 @@
+# Dokploy Application — Build type: Nixpacks
+# Auto-detects Python from requirements.txt; Node is added to build the Vite UI.
+
+providers = ["python"]
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"
+NODE_OPTIONS = "--max-old-space-size=1536"
+STATIC_DIR = "frontend/dist"
+PVDES_DATA_DIR = "/data"
+
+[phases.setup]
+nixPkgs = ["...", "nodejs_22"]
+
+[phases.install]
+cmds = ["...", "npm ci --prefix frontend"]
+
+[phases.build]
+cmds = ["npm run build --prefix frontend"]
+
+[start]
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend"

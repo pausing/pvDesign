@@ -26,47 +26,45 @@ Open http://localhost:5173. A seeded **Demo 100 MW** project is created on first
 
 Projects are stored as JSON files under `backend/data/projects/`.
 
-## Deploy on Hostinger VPS + Dokploy
+## Deploy on Hostinger VPS + Dokploy (Nixpacks)
 
-Production is one Docker image: FastAPI serves the built UI and `/api` on port **8000**. Project JSON lives in a Docker volume so deploys do not wipe designs.
+Use a Dokploy **Application** with build type **Nixpacks**. The UI is built during deploy; FastAPI serves it and `/api` on port **8000**.
 
-### 1. Push this repo to GitHub
+`nixpacks.toml` at the repo root is the build plan. Project JSON is stored in `/data` — mount a volume there or designs are lost on each deploy.
 
-Commit `Dockerfile`, `docker-compose.yml`, and the backend changes, then `git push` to `pausing/pvDesign`.
+### 1. Push to GitHub
+
+Commit and push `nixpacks.toml`, `requirements.txt`, and `.python-version` to `main`.
 
 ### 2. VPS
 
-1. Order a Hostinger VPS with the **Ubuntu + Dokploy** template (4 GB RAM is safer for the first image build).
-2. Open `http://YOUR_VPS_IP:3000` and create the Dokploy admin account.
-3. In Hostinger hPanel → VPS → Firewall, allow **22**, **80**, **443**, and **3000**.
-4. Point a domain A record at the VPS IP (one for Dokploy, one for the app if you use two names).
-5. In Dokploy **Settings**, set the Dokploy domain, your email, and **Let's Encrypt**.
+1. Hostinger VPS with the **Ubuntu + Dokploy** template (4 GB RAM is safer for the Node build).
+2. Open `http://YOUR_VPS_IP:3000` and create the admin account.
+3. Firewall: **22**, **80**, **443**, **3000**.
+4. Point a domain A record at the VPS IP.
+5. Dokploy **Settings**: domain, email, **Let's Encrypt**.
 
-### 3. Create the app in Dokploy
+### 3. Create the web app
 
 1. **New Project** → e.g. `pv-design`.
-2. **Add Service** → **Compose**.
-3. Provider: **GitHub** (or Git) → repository `pausing/pvDesign` → branch `main`.
-4. Compose path: `docker-compose.yml`.
-5. **Environment** tab, add (use your real public URL, no trailing slash):
+2. **Add Service** → **Application** (not Compose).
+3. Provider: **GitHub** → `pausing/pvDesign` → branch `main`.
+4. **Build type:** Nixpacks.
+5. **Port:** `8000`.
+6. **Environment:**
 
 ```
 CORS_ORIGINS=https://your-domain.com
+STATIC_DIR=frontend/dist
+PVDES_DATA_DIR=/data
 ```
 
-6. **Domains** tab: domain `your-domain.com`, service `app`, HTTPS on, certificate Let's Encrypt, **internal port `8000`**.
-7. **Advanced**: turn on **Isolated Deployments** if you run more than one compose stack.
-8. **Deploy**. First build compiles the frontend inside Docker and can take several minutes.
+7. **Advanced → Mounts:** add a volume with mount path `/data`.
+8. **Domains:** your domain, HTTPS, Let's Encrypt, container port **8000**.
+9. Enable **AutoDeploy**, then **Deploy**.
 
-Open `https://your-domain.com`. You should see the projects page and `/api/health` should return `{"ok":true}`.
+Open `https://your-domain.com`. `/api/health` should return `{"ok":true}`.
 
-Auto-deploy: in the compose service, enable **AutoDeploy** so a push to `main` rebuilds.
+### Optional: Docker Compose
 
-### Local production image
-
-```bash
-cp .env.example .env
-docker compose up --build
-```
-
-Then open http://localhost:8000.
+`Dockerfile` and `docker-compose.yml` are still in the repo if you prefer a Compose service instead of Nixpacks.

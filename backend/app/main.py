@@ -26,8 +26,21 @@ def _cors_origins() -> list[str]:
     return origins
 
 
-_static = os.environ.get("STATIC_DIR", "").strip()
-STATIC_DIR = Path(_static) if _static else None
+def _resolve_static_dir() -> Optional[Path]:
+    raw = os.environ.get("STATIC_DIR", "").strip()
+    candidates = []
+    if raw:
+        candidates.append(Path(raw))
+    repo_root = Path(__file__).resolve().parents[2]
+    candidates.append(repo_root / "frontend" / "dist")
+    candidates.append(Path("frontend/dist"))
+    for path in candidates:
+        if path.is_dir() and (path / "index.html").is_file():
+            return path
+    return None
+
+
+STATIC_DIR = _resolve_static_dir()
 
 
 @asynccontextmanager
