@@ -1,5 +1,6 @@
 # Dokploy Application — Build type: Nixpacks
-# Auto-detects Python from requirements.txt; Node is added to build the Vite UI.
+# Python API + Vite UI. Official Node 22.14 is installed because Nixpacks
+# nodejs_22 is 22.10, which cannot install Rolldown's Linux native binding.
 
 providers = ["python"]
 
@@ -8,20 +9,20 @@ NIXPACKS_PYTHON_VERSION = "3.12"
 NODE_OPTIONS = "--max-old-space-size=1536"
 STATIC_DIR = "frontend/dist"
 PVDES_DATA_DIR = "/data"
-NPM_CONFIG_ENGINE_STRICT = "false"
-NPM_CONFIG_OPTIONAL = "true"
 
 [phases.setup]
-nixPkgs = ["...", "nodejs_22"]
+nixPkgs = ["..."]
+aptPkgs = ["curl", "xz-utils", "ca-certificates"]
 
 [phases.install]
 cmds = [
   "...",
-  "cd frontend && NODE_ENV=development NPM_CONFIG_ENGINE_STRICT=false npm install --include=dev --include=optional --no-audit --force",
+  "bash scripts/install-node.sh",
+  "export PATH=/usr/local/bin:$PATH && cd frontend && npm ci --include=dev --include=optional",
 ]
 
 [phases.build]
-cmds = ["npm run build --prefix frontend"]
+cmds = ["export PATH=/usr/local/bin:$PATH && npm run build --prefix frontend"]
 
 [start]
 cmd = "uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend"
