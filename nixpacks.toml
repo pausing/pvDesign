@@ -8,12 +8,17 @@ NIXPACKS_PYTHON_VERSION = "3.12"
 NODE_OPTIONS = "--max-old-space-size=1536"
 STATIC_DIR = "frontend/dist"
 PVDES_DATA_DIR = "/data"
+NPM_CONFIG_ENGINE_STRICT = "false"
+NPM_CONFIG_OPTIONAL = "true"
 
 [phases.setup]
 nixPkgs = ["...", "nodejs_22"]
 
 [phases.install]
-cmds = ["...", "npm ci --prefix frontend"]
+cmds = [
+  "...",
+  "cd frontend && NODE_ENV=development NPM_CONFIG_ENGINE_STRICT=false npm install --include=dev --include=optional --no-audit --force",
+]
 
 [phases.build]
 cmds = ["npm run build --prefix frontend"]
