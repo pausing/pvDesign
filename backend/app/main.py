@@ -17,6 +17,7 @@ def _cors_origins() -> list[str]:
         "http://127.0.0.1:5173",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
+        "https://portal.powerlearn.us",
     ]
     extra = os.environ.get("CORS_ORIGINS", "")
     for part in extra.split(","):
@@ -43,15 +44,21 @@ def _resolve_static_dir() -> Optional[Path]:
 STATIC_DIR = _resolve_static_dir()
 
 
+def _base_path() -> str:
+    return os.environ.get("PV_BASE_PATH", "/pv").rstrip("/")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     storage.init_store()
     yield
 
 
-app = FastAPI(title="PV Design API", version="0.1.0", lifespan=lifespan)
+BASE_PATH = _base_path()
 
-app.add_middleware(
+api_app = FastAPI(title="PV Design API", version="0.1.0", lifespan=lifespan)
+
+api_app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins(),
     allow_credentials=True,
@@ -59,12 +66,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(projects.router)
+api_app.include_router(projects.router)
 
 
-@app.get("/api/health")
+@api_app.get("/api/health")
 def health():
     return {"ok": True}
+
+
+app = FastAPI(title="PV Design", version="0.1.0")
+app.mount(BASE_PATH, api_app)
 
 
 def _safe_static(full_path: str) -> Optional[Path]:
@@ -83,11 +94,11 @@ def _safe_static(full_path: str) -> Optional[Path]:
 
 if STATIC_DIR is not None and STATIC_DIR.is_dir():
 
-    @app.get("/")
+    @api_app.get("/")
     def spa_root():
         return FileResponse(STATIC_DIR / "index.html")
 
-    @app.get("/{full_path:path}")
+    @api_app.get("/{full_path:path}")
     def spa_path(full_path: str):
         if full_path == "api" or full_path.startswith("api/"):
             raise HTTPException(status_code=404)

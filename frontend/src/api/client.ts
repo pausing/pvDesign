@@ -23,36 +23,36 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listProjects: () => request<ProjectSummary[]>("/api/projects"),
+  listProjects: () => request<ProjectSummary[]>("/pv/api/projects"),
 
-  getProject: (id: string) => request<Project>(`/api/projects/${id}`),
+  getProject: (id: string) => request<Project>(`/pv/api/projects/${id}`),
 
   createProject: (body: ProjectCreate) =>
-    request<Project>("/api/projects", { method: "POST", body: JSON.stringify(body) }),
+    request<Project>("/pv/api/projects", { method: "POST", body: JSON.stringify(body) }),
 
   putProject: (project: Project) =>
-    request<Project>(`/api/projects/${project.id}`, {
+    request<Project>(`/pv/api/projects/${project.id}`, {
       method: "PUT",
       body: JSON.stringify(project),
     }),
 
   patchProject: (id: string, body: Partial<Project>) =>
-    request<Project>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    request<Project>(`/pv/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
-  deleteProject: (id: string) => request<void>(`/api/projects/${id}`, { method: "DELETE" }),
+  deleteProject: (id: string) => request<void>(`/pv/api/projects/${id}`, { method: "DELETE" }),
 
   duplicateProject: (id: string) =>
-    request<Project>(`/api/projects/${id}/duplicate`, { method: "POST" }),
+    request<Project>(`/pv/api/projects/${id}/duplicate`, { method: "POST" }),
 
   importProject: (project: Project) =>
-    request<Project>("/api/projects/import", { method: "POST", body: JSON.stringify(project) }),
+    request<Project>("/pv/api/projects/import", { method: "POST", body: JSON.stringify(project) }),
 
   exportCatalog: (id: string) =>
-    request<{ catalog: AssetDefinition[] }>(`/api/projects/${id}/catalog/export`),
+    request<{ catalog: AssetDefinition[] }>(`/pv/api/projects/${id}/catalog/export`),
 
   importCatalog: (id: string, catalog: AssetDefinition[]) =>
     request<{ imported: number; catalog: AssetDefinition[] }>(
-      `/api/projects/${id}/catalog/import`,
+      `/pv/api/projects/${id}/catalog/import`,
       { method: "POST", body: JSON.stringify({ catalog }) },
     ),
 };

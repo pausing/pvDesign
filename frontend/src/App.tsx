@@ -7,7 +7,7 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/pv">
       <Routes>
         <Route path="/" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<AppShell />}>
