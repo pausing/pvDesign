@@ -164,6 +164,8 @@ class Project(BaseModel):
     name: str
     site: str = ""
     notes: str = ""
+    owner: str = ""
+    user_id: str = ""
     created_at: str
     updated_at: str
     catalog: list[AssetDefinition] = Field(default_factory=list)
@@ -181,6 +183,8 @@ class ProjectSummary(BaseModel):
     id: str
     name: str
     site: str
+    owner: str = ""
+    user_id: str = ""
     updated_at: str
     created_at: str
 
@@ -189,6 +193,8 @@ class ProjectCreate(BaseModel):
     name: str
     site: str = ""
     notes: str = ""
+    owner: Optional[str] = None
+    user_id: Optional[str] = None
     seed_catalog: bool = True
 
 

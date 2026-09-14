@@ -136,6 +136,8 @@ export interface Project {
   name: string;
   site: string;
   notes: string;
+  owner: string;
+  user_id: string;
   created_at: string;
   updated_at: string;
   catalog: AssetDefinition[];
@@ -148,6 +150,8 @@ export interface ProjectSummary {
   id: string;
   name: string;
   site: string;
+  owner?: string;
+  user_id?: string;
   updated_at: string;
   created_at: string;
 }
@@ -156,6 +160,8 @@ export interface ProjectCreate {
   name: string;
   site?: string;
   notes?: string;
+  owner?: string;
+  user_id?: string;
   seed_catalog?: boolean;
 }
 

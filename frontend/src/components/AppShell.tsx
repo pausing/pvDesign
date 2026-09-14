@@ -45,8 +45,10 @@ export function AppShell() {
           <div className="truncate text-[13px] font-medium">
             {ctx.project?.name ?? "…"}
           </div>
-          {ctx.project?.site ? (
-            <div className="truncate text-[11px] text-muted">{ctx.project.site}</div>
+          {ctx.project?.site || ctx.project?.owner ? (
+            <div className="truncate text-[11px] text-muted">
+              {[ctx.project?.site, ctx.project?.owner].filter(Boolean).join(" · ")}
+            </div>
           ) : null}
         </div>
         <nav className="ml-4 flex gap-1">

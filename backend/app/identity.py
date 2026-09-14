@@ -38,3 +38,15 @@ def portal_identity(request: Request) -> dict[str, Optional[str] | Optional[bool
         "email": _header(request, HEADER_EMAIL),
         "admin": _parse_admin(request.headers.get(HEADER_ADMIN)),
     }
+
+
+def owner_from_identity(
+    request: Request,
+    owner: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> tuple[str, str]:
+    """Use explicit owner/user_id when provided; otherwise stamp from headers."""
+    identity = portal_identity(request)
+    stamped_owner = (owner or "").strip() or (identity.get("email") or "")
+    stamped_user_id = (user_id or "").strip() or (identity.get("id") or "")
+    return str(stamped_owner or ""), str(stamped_user_id or "")

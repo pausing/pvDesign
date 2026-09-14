@@ -128,7 +128,8 @@ export function ProjectsPage() {
               >
                 <div className="font-medium">{p.name}</div>
                 <div className="text-[12px] text-muted">
-                  {p.site || "No site"} · updated {new Date(p.updated_at).toLocaleString()}
+                  {p.site || "No site"} · {p.owner || "No owner"} · updated{" "}
+                  {new Date(p.updated_at).toLocaleString()}
                 </div>
               </button>
               <Button onClick={() => navigate(`/projects/${p.id}/config`)}>Open</Button>
