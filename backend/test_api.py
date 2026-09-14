@@ -136,3 +136,46 @@ def test_api_404_not_caught_by_spa(client):
     """Test that non-existent API routes return 404, not SPA."""
     response = client.get("/pv/api/nonexistent")
     assert response.status_code == 404
+
+
+def test_me_without_identity_headers(client):
+    """Missing ForwardAuth headers yield null identity fields."""
+    response = client.get("/pv/api/me")
+    assert response.status_code == 200
+    assert response.json() == {"id": None, "email": None, "admin": None}
+
+
+def test_me_with_identity_headers(client):
+    """Present X-Powerlearn-* headers are returned as {id, email, admin}."""
+    response = client.get(
+        "/pv/api/me",
+        headers={
+            "X-Powerlearn-User-Id": "user-42",
+            "X-Powerlearn-Email": "pablo@powerlearn.us",
+            "X-Powerlearn-Admin": "true",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "user-42",
+        "email": "pablo@powerlearn.us",
+        "admin": True,
+    }
+
+
+def test_me_admin_false_header(client):
+    """X-Powerlearn-Admin=false is a boolean false, not null."""
+    response = client.get(
+        "/pv/api/me",
+        headers={
+            "X-Powerlearn-User-Id": "user-7",
+            "X-Powerlearn-Email": "member@powerlearn.us",
+            "X-Powerlearn-Admin": "false",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "user-7",
+        "email": "member@powerlearn.us",
+        "admin": False,
+    }
