@@ -131,6 +131,12 @@ export interface ProjectParameters {
   tracker_ns_gap_m: number;
 }
 
+export interface PortalUser {
+  id: string | null;
+  email: string | null;
+  admin: boolean | null;
+}
+
 export interface Project {
   id: string;
   name: string;
