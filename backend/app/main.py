@@ -3,10 +3,11 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+from app.identity import portal_identity
 from app.routers import projects
 from app import storage
 
@@ -72,6 +73,12 @@ api_app.include_router(projects.router)
 @api_app.get("/api/health")
 def health():
     return {"ok": True}
+
+
+@api_app.get("/api/me")
+def me(request: Request):
+    """Portal user from ForwardAuth headers, or nulls when headers are absent."""
+    return portal_identity(request)
 
 
 app = FastAPI(title="PV Design", version="0.1.0")
