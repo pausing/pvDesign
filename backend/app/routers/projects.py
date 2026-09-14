@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from app.identity import owner_from_identity
 from app.models import CatalogPayload, Project, ProjectCreate, ProjectPatch
 from app.seed import empty_project, utc_now
 from app import storage
@@ -18,12 +19,15 @@ def list_projects():
 
 
 @router.post("", status_code=201)
-def create_project(body: ProjectCreate):
+def create_project(body: ProjectCreate, request: Request):
+    owner, user_id = owner_from_identity(request, body.owner, body.user_id)
     project = empty_project(
         name=body.name.strip() or "Untitled project",
         site=body.site,
         notes=body.notes,
         seed_catalog=body.seed_catalog,
+        owner=owner,
+        user_id=user_id,
     )
     return storage.save_project(project)
 

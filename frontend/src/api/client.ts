@@ -1,4 +1,4 @@
-import type { AssetDefinition, Project, ProjectCreate, ProjectSummary } from "../types/project";
+import type { AssetDefinition, PortalUser, Project, ProjectCreate, ProjectSummary } from "../types/project";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -23,6 +23,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  me: () => request<PortalUser>("/pv/api/me"),
+
   listProjects: () => request<ProjectSummary[]>("/pv/api/projects"),
 
   getProject: (id: string) => request<Project>(`/pv/api/projects/${id}`),

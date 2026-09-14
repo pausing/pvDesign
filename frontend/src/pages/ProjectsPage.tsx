@@ -71,8 +71,7 @@ export function ProjectsPage() {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-8 flex items-end justify-between gap-4">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] text-accent">PV Design</div>
-          <h1 className="mt-1 text-3xl font-medium tracking-tight">Projects</h1>
+          <h1 className="text-3xl font-medium tracking-tight">Projects</h1>
           <p className="mt-2 max-w-xl text-muted">
             Utility-scale plant files. Each project holds an asset library, electrical hierarchy,
             and a block/row layout.
@@ -128,7 +127,8 @@ export function ProjectsPage() {
               >
                 <div className="font-medium">{p.name}</div>
                 <div className="text-[12px] text-muted">
-                  {p.site || "No site"} · updated {new Date(p.updated_at).toLocaleString()}
+                  {p.site || "No site"} · {p.owner || "No owner"} · updated{" "}
+                  {new Date(p.updated_at).toLocaleString()}
                 </div>
               </button>
               <Button onClick={() => navigate(`/projects/${p.id}/config`)}>Open</Button>

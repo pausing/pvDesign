@@ -41,6 +41,8 @@ def _summary(project: Project) -> dict:
         id=project.id,
         name=project.name,
         site=project.site,
+        owner=project.owner,
+        user_id=project.user_id,
         updated_at=project.updated_at,
         created_at=project.created_at,
     ).model_dump()

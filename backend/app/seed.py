@@ -187,7 +187,14 @@ def default_layout() -> Layout:
     return Layout(blocks=blocks, stations=stations, cable_runs=runs)
 
 
-def empty_project(name: str, site: str = "", notes: str = "", seed_catalog: bool = True) -> Project:
+def empty_project(
+    name: str,
+    site: str = "",
+    notes: str = "",
+    seed_catalog: bool = True,
+    owner: str = "",
+    user_id: str = "",
+) -> Project:
     now = utc_now()
     catalog = default_catalog() if seed_catalog else []
     topology = default_topology() if seed_catalog else None
@@ -199,6 +206,8 @@ def empty_project(name: str, site: str = "", notes: str = "", seed_catalog: bool
         name=name,
         site=site,
         notes=notes,
+        owner=owner,
+        user_id=user_id,
         created_at=now,
         updated_at=now,
         catalog=catalog,

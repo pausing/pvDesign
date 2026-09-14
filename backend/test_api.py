@@ -44,6 +44,8 @@ def test_create_and_get_project(client):
     assert create_response.status_code == 201
     project = create_response.json()
     assert project["name"] == "Test Project"
+    assert project["owner"] == ""
+    assert project["user_id"] == ""
     project_id = project["id"]
 
     # Get project
@@ -161,6 +163,67 @@ def test_me_with_identity_headers(client):
         "email": "pablo@powerlearn.us",
         "admin": True,
     }
+
+
+def test_create_project_without_identity_headers(client):
+    """Create still succeeds when ForwardAuth headers are absent; owner stays empty."""
+    response = client.post(
+        "/pv/api/projects",
+        json={"name": "No Identity", "site": "Lab", "seed_catalog": False},
+    )
+    assert response.status_code == 201
+    project = response.json()
+    assert project["owner"] == ""
+    assert project["user_id"] == ""
+    listed = client.get("/pv/api/projects").json()
+    summary = next(item for item in listed if item["id"] == project["id"])
+    assert summary["owner"] == ""
+    client.delete(f"/pv/api/projects/{project['id']}")
+
+
+def test_create_project_with_identity_headers(client):
+    """Omitting owner on create stamps email and user id from X-Powerlearn-* headers."""
+    response = client.post(
+        "/pv/api/projects",
+        json={"name": "Portal Owned", "site": "Atacama", "seed_catalog": False},
+        headers={
+            "X-Powerlearn-User-Id": "1",
+            "X-Powerlearn-Email": "pau.maqueda@gmail.com",
+            "X-Powerlearn-Admin": "true",
+        },
+    )
+    assert response.status_code == 201
+    project = response.json()
+    assert project["owner"] == "pau.maqueda@gmail.com"
+    assert project["user_id"] == "1"
+
+    fetched = client.get(f"/pv/api/projects/{project['id']}")
+    assert fetched.status_code == 200
+    assert fetched.json()["owner"] == "pau.maqueda@gmail.com"
+    assert fetched.json()["user_id"] == "1"
+
+    listed = client.get("/pv/api/projects").json()
+    summary = next(item for item in listed if item["id"] == project["id"])
+    assert summary["owner"] == "pau.maqueda@gmail.com"
+    assert summary["user_id"] == "1"
+    client.delete(f"/pv/api/projects/{project['id']}")
+
+
+def test_create_project_explicit_owner_overrides_headers(client):
+    """A client-supplied owner is kept; missing user_id still comes from headers."""
+    response = client.post(
+        "/pv/api/projects",
+        json={"name": "Named Owner", "owner": "design@powerlearn.us", "seed_catalog": False},
+        headers={
+            "X-Powerlearn-User-Id": "9",
+            "X-Powerlearn-Email": "pau.maqueda@gmail.com",
+        },
+    )
+    assert response.status_code == 201
+    project = response.json()
+    assert project["owner"] == "design@powerlearn.us"
+    assert project["user_id"] == "9"
+    client.delete(f"/pv/api/projects/{project['id']}")
 
 
 def test_me_admin_false_header(client):
