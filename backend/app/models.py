@@ -149,6 +149,90 @@ class Layout(BaseModel):
 class ProjectParameters(BaseModel):
     tracker_pitch_m: float = 12
     tracker_ns_gap_m: float = 10
+    modules_per_tracker: Optional[int] = None
+    strings_per_tracker: Optional[int] = None
+
+
+MvTopology = Literal["radial", "ring", "open-ring"]
+
+
+class ElectricalBtRow(BaseModel):
+    subpark: str = ""
+    its: str = ""
+    its_id: str = ""
+    inv: str = ""
+    inverter_id: str = ""
+    module_manufacturer: str = ""
+    module_power_w: Optional[float] = None
+    trackers: Optional[float] = None
+    strings_inv: Optional[float] = None
+    strings_its: Optional[float] = None
+    n_modules: Optional[float] = None
+    pot_dc_kwp_inv: Optional[float] = None
+    pot_dc_kwp_its: Optional[float] = None
+    pot_ac_kva_inv: Optional[float] = None
+    pot_ac_kva_its: Optional[float] = None
+    ratio: Optional[float] = None
+    scb: Optional[str] = None
+
+
+class ElectricalBtItsSummary(BaseModel):
+    subpark: str = ""
+    its: str = ""
+    its_id: str = ""
+    inverter_count: int = 0
+    trackers: Optional[float] = None
+    strings: Optional[float] = None
+    n_modules: Optional[float] = None
+    pot_dc_kwp: Optional[float] = None
+    pot_ac_kva: Optional[float] = None
+    ratio: Optional[float] = None
+
+
+class ElectricalBtTotals(BaseModel):
+    its_count: int = 0
+    inverter_count: int = 0
+    trackers: Optional[float] = None
+    n_modules: Optional[float] = None
+    pot_dc_kwp: Optional[float] = None
+    pot_ac_kva: Optional[float] = None
+
+
+class ElectricalBtConfig(BaseModel):
+    source_filename: str = ""
+    imported_at: str = ""
+    sheet_name: str = "Electrical Configuration"
+    trackers_header: str = ""
+    modules_per_tracker: int = 87
+    strings_per_tracker: int = 3
+    rows: list[ElectricalBtRow] = Field(default_factory=list)
+    by_its: list[ElectricalBtItsSummary] = Field(default_factory=list)
+    totals: ElectricalBtTotals = Field(default_factory=ElectricalBtTotals)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ElectricalMvRow(BaseModel):
+    subpark: str = ""
+    its: str = ""
+    its_id: str = ""
+    feeder_id: str = ""
+    destination: str = ""
+    voltage_kv: Optional[float] = None
+    transformer_kva: Optional[float] = None
+    cable_section_mm2: Optional[float] = None
+    conductor: str = ""
+    length_m: Optional[float] = None
+    topology: Optional[MvTopology] = None
+    load_kva: Optional[float] = None
+    notes: str = ""
+
+
+class ElectricalMvConfig(BaseModel):
+    source_filename: str = ""
+    imported_at: str = ""
+    sheet_name: str = "MV Configuration"
+    rows: list[ElectricalMvRow] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 def _as_topology_list(value: Any) -> Any:
@@ -172,6 +256,8 @@ class Project(BaseModel):
     topology: List[TopologyNode] = Field(default_factory=list)
     layout: Layout = Field(default_factory=Layout)
     parameters: ProjectParameters = Field(default_factory=ProjectParameters)
+    electrical_bt: Optional[ElectricalBtConfig] = None
+    electrical_mv: Optional[ElectricalMvConfig] = None
 
     @field_validator("topology", mode="before")
     @classmethod
@@ -206,6 +292,8 @@ class ProjectPatch(BaseModel):
     topology: Optional[List[TopologyNode]] = None
     layout: Optional[Layout] = None
     parameters: Optional[ProjectParameters] = None
+    electrical_bt: Optional[ElectricalBtConfig] = None
+    electrical_mv: Optional[ElectricalMvConfig] = None
 
     @field_validator("topology", mode="before")
     @classmethod

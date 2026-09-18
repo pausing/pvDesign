@@ -2,9 +2,19 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import JSONResponse, Response
 
+from app.electrical import (
+    build_bt_template,
+    build_mv_template,
+    merge_bt,
+    merge_mv,
+    parse_bt_workbook,
+    parse_mv_workbook,
+    preview_bt,
+    preview_mv,
+)
 from app.identity import owner_from_identity
 from app.models import CatalogPayload, Project, ProjectCreate, ProjectPatch
 from app.seed import empty_project, utc_now
@@ -121,3 +131,110 @@ def import_catalog(project_id: str, body: CatalogPayload):
     project.catalog = list(by_id.values())
     storage.save_project(project)
     return {"imported": imported, "catalog": project.catalog}
+
+
+def _require_project(project_id: str) -> Project:
+    project = storage.get_project(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+
+def _xlsx_response(content: bytes, filename: str) -> Response:
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+async def _read_xlsx(file: UploadFile) -> tuple[bytes, str]:
+    filename = file.filename or "upload.xlsx"
+    if not filename.lower().endswith((".xlsx", ".xlsm")):
+        raise HTTPException(status_code=400, detail="Upload an .xlsx workbook.")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file.")
+    return data, filename
+
+
+@router.get("/{project_id}/electrical/templates/bt")
+def download_bt_template(project_id: str, examples: bool = True):
+    _require_project(project_id)
+    return _xlsx_response(build_bt_template(include_examples=examples), "bt_electrical_configuration.xlsx")
+
+
+@router.get("/{project_id}/electrical/templates/mv")
+def download_mv_template(project_id: str, examples: bool = True):
+    _require_project(project_id)
+    return _xlsx_response(build_mv_template(include_examples=examples), "mv_electrical_configuration.xlsx")
+
+
+@router.post("/{project_id}/electrical/bt/parse")
+async def parse_bt_config(project_id: str, file: UploadFile = File(...)):
+    project = _require_project(project_id)
+    data, filename = await _read_xlsx(file)
+    try:
+        config = parse_bt_workbook(data, filename=filename, parameters=project.parameters)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"preview": preview_bt(config), "config": config}
+
+
+@router.post("/{project_id}/electrical/bt/import")
+async def import_bt_config(
+    project_id: str,
+    file: UploadFile = File(...),
+    mode: str = Query("replace", pattern="^(replace|merge)$"),
+):
+    project = _require_project(project_id)
+    data, filename = await _read_xlsx(file)
+    try:
+        incoming = parse_bt_workbook(data, filename=filename, parameters=project.parameters)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    project.electrical_bt = (
+        merge_bt(project.electrical_bt, incoming) if mode == "merge" else incoming
+    )
+    saved = storage.save_project(project)
+    return {
+        "mode": mode,
+        "preview": preview_bt(saved.electrical_bt) if saved.electrical_bt else None,
+        "electrical_bt": saved.electrical_bt,
+        "project": saved,
+    }
+
+
+@router.post("/{project_id}/electrical/mv/parse")
+async def parse_mv_config(project_id: str, file: UploadFile = File(...)):
+    project = _require_project(project_id)
+    data, filename = await _read_xlsx(file)
+    try:
+        config = parse_mv_workbook(data, filename=filename, bt=project.electrical_bt)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"preview": preview_mv(config), "config": config}
+
+
+@router.post("/{project_id}/electrical/mv/import")
+async def import_mv_config(
+    project_id: str,
+    file: UploadFile = File(...),
+    mode: str = Query("replace", pattern="^(replace|merge)$"),
+):
+    project = _require_project(project_id)
+    data, filename = await _read_xlsx(file)
+    try:
+        incoming = parse_mv_workbook(data, filename=filename, bt=project.electrical_bt)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    project.electrical_mv = (
+        merge_mv(project.electrical_mv, incoming) if mode == "merge" else incoming
+    )
+    saved = storage.save_project(project)
+    return {
+        "mode": mode,
+        "preview": preview_mv(saved.electrical_mv) if saved.electrical_mv else None,
+        "electrical_mv": saved.electrical_mv,
+        "project": saved,
+    }

@@ -19,7 +19,7 @@ export function useProject(id: string | undefined) {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       setStatus("saving");
-      api
+        api
         .patchProject(next.id, {
           name: next.name,
           site: next.site,
@@ -28,6 +28,8 @@ export function useProject(id: string | undefined) {
           topology: next.topology,
           layout: next.layout,
           parameters: next.parameters,
+          electrical_bt: next.electrical_bt,
+          electrical_mv: next.electrical_mv,
         })
         .then((saved) => {
           if (latest.current && latest.current.id === saved.id) {
@@ -90,7 +92,13 @@ export function useProject(id: string | undefined) {
     [persist],
   );
 
-  return { project, status, error, update, setProject };
+  const replaceProject = useCallback((next: Project) => {
+    latest.current = next;
+    setProject(next);
+    setStatus("saved");
+  }, []);
+
+  return { project, status, error, update, setProject, replaceProject };
 }
 
 export type ProjectContext = ReturnType<typeof useProject>;
