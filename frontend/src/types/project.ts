@@ -129,6 +129,109 @@ export interface Layout {
 export interface ProjectParameters {
   tracker_pitch_m: number;
   tracker_ns_gap_m: number;
+  modules_per_tracker?: number | null;
+  strings_per_tracker?: number | null;
+}
+
+export interface ElectricalBtRow {
+  subpark: string;
+  its: string;
+  its_id: string;
+  inv: string;
+  inverter_id: string;
+  module_manufacturer: string;
+  module_power_w: number | null;
+  trackers: number | null;
+  strings_inv: number | null;
+  strings_its: number | null;
+  n_modules: number | null;
+  pot_dc_kwp_inv: number | null;
+  pot_dc_kwp_its: number | null;
+  pot_ac_kva_inv: number | null;
+  pot_ac_kva_its: number | null;
+  ratio: number | null;
+  scb: string | null;
+}
+
+export interface ElectricalBtItsSummary {
+  subpark: string;
+  its: string;
+  its_id: string;
+  inverter_count: number;
+  trackers: number | null;
+  strings: number | null;
+  n_modules: number | null;
+  pot_dc_kwp: number | null;
+  pot_ac_kva: number | null;
+  ratio: number | null;
+}
+
+export interface ElectricalBtTotals {
+  its_count: number;
+  inverter_count: number;
+  trackers: number | null;
+  n_modules: number | null;
+  pot_dc_kwp: number | null;
+  pot_ac_kva: number | null;
+}
+
+export interface ElectricalBtConfig {
+  source_filename: string;
+  imported_at: string;
+  sheet_name: string;
+  trackers_header: string;
+  modules_per_tracker: number;
+  strings_per_tracker: number;
+  rows: ElectricalBtRow[];
+  by_its: ElectricalBtItsSummary[];
+  totals: ElectricalBtTotals;
+  warnings: string[];
+}
+
+export interface ElectricalMvRow {
+  subpark: string;
+  its: string;
+  its_id: string;
+  feeder_id: string;
+  destination: string;
+  voltage_kv: number | null;
+  transformer_kva: number | null;
+  cable_section_mm2: number | null;
+  conductor: string;
+  length_m: number | null;
+  topology: "radial" | "ring" | "open-ring" | null;
+  load_kva: number | null;
+  notes: string;
+}
+
+export interface ElectricalMvConfig {
+  source_filename: string;
+  imported_at: string;
+  sheet_name: string;
+  rows: ElectricalMvRow[];
+  warnings: string[];
+}
+
+export interface ElectricalBtPreview {
+  kind: "bt";
+  its_count: number;
+  inverter_count: number;
+  trackers: number | null;
+  n_modules: number | null;
+  pot_dc_kwp: number | null;
+  pot_ac_kva: number | null;
+  modules_per_tracker: number;
+  strings_per_tracker: number;
+  warnings: string[];
+}
+
+export interface ElectricalMvPreview {
+  kind: "mv";
+  feeder_count: number;
+  its_count: number;
+  load_kva: number | null;
+  length_m: number | null;
+  warnings: string[];
 }
 
 export interface PortalUser {
@@ -150,6 +253,8 @@ export interface Project {
   topology: TopologyNode[];
   layout: Layout;
   parameters?: ProjectParameters;
+  electrical_bt?: ElectricalBtConfig | null;
+  electrical_mv?: ElectricalMvConfig | null;
 }
 
 export interface ProjectSummary {

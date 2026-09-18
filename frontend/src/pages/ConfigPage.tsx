@@ -1,6 +1,7 @@
 import { useOutletContext } from "react-router-dom";
 import { api, downloadJson, pickJsonFile } from "../api/client";
 import { Button, Card, Field, NumInput, TextInput } from "../components/ui";
+import { ElectricalSection } from "../components/ElectricalSection";
 import { uid } from "../lib/ids";
 import { ASSET_KINDS, CABLE_KINDS, KIND_COLOR, KIND_FIELDS, KIND_LABEL } from "../lib/kinds";
 import { asForest, cloneNode, mapTopology } from "../lib/topology";
@@ -33,7 +34,7 @@ function newNode(assetId: string): TopologyNode {
 }
 
 export function ConfigPage() {
-  const { project, update } = useOutletContext<Ctx>();
+  const { project, update, replaceProject } = useOutletContext<Ctx>();
   const [kindFilter, setKindFilter] = useState<AssetKind | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -110,6 +111,7 @@ export function ConfigPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <ElectricalSection project={project} onImported={(next) => replaceProject(next)} />
       <section className="shrink-0 border-b border-line px-4 py-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

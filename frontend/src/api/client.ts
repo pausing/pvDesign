@@ -1,25 +1,41 @@
-import type { AssetDefinition, PortalUser, Project, ProjectCreate, ProjectSummary } from "../types/project";
+import type {
+  AssetDefinition,
+  ElectricalBtConfig,
+  ElectricalBtPreview,
+  ElectricalMvConfig,
+  ElectricalMvPreview,
+  PortalUser,
+  Project,
+  ProjectCreate,
+  ProjectSummary,
+} from "../types/project";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  const isForm = typeof FormData !== "undefined" && init?.body instanceof FormData;
+  if (!isForm && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
   const res = await fetch(path, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
   if (res.status === 204) return undefined as T;
   if (!res.ok) {
     let detail = res.statusText;
     try {
       const body = (await res.json()) as { detail?: string };
-      if (body.detail) detail = body.detail;
+      if (body.detail) detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
     } catch {
       /* ignore */
     }
     throw new Error(detail);
   }
-  return (await res.json()) as T;
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return (await res.json()) as T;
+  }
+  return (await res.blob()) as T;
 }
 
 export const api = {
@@ -57,16 +73,65 @@ export const api = {
       `/pv/api/projects/${id}/catalog/import`,
       { method: "POST", body: JSON.stringify({ catalog }) },
     ),
+
+  downloadBtTemplate: (id: string) =>
+    request<Blob>(`/pv/api/projects/${id}/electrical/templates/bt`),
+
+  downloadMvTemplate: (id: string) =>
+    request<Blob>(`/pv/api/projects/${id}/electrical/templates/mv`),
+
+  parseBtElectrical: (id: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<{ preview: ElectricalBtPreview; config: ElectricalBtConfig }>(
+      `/pv/api/projects/${id}/electrical/bt/parse`,
+      { method: "POST", body },
+    );
+  },
+
+  importBtElectrical: (id: string, file: File, mode: "replace" | "merge") => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<{
+      mode: string;
+      preview: ElectricalBtPreview;
+      electrical_bt: ElectricalBtConfig;
+      project: Project;
+    }>(`/pv/api/projects/${id}/electrical/bt/import?mode=${mode}`, { method: "POST", body });
+  },
+
+  parseMvElectrical: (id: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<{ preview: ElectricalMvPreview; config: ElectricalMvConfig }>(
+      `/pv/api/projects/${id}/electrical/mv/parse`,
+      { method: "POST", body },
+    );
+  },
+
+  importMvElectrical: (id: string, file: File, mode: "replace" | "merge") => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<{
+      mode: string;
+      preview: ElectricalMvPreview;
+      electrical_mv: ElectricalMvConfig;
+      project: Project;
+    }>(`/pv/api/projects/${id}/electrical/mv/import?mode=${mode}`, { method: "POST", body });
+  },
 };
 
-export function downloadJson(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+export function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function downloadJson(filename: string, data: unknown) {
+  downloadBlob(filename, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
 }
 
 export function pickJsonFile(): Promise<unknown> {
