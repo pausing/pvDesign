@@ -6,6 +6,7 @@ import type {
   ElectricalMvPreview,
   PortalUser,
   ItsDesign,
+  ItsHierarchy,
   ItsPvBlock,
   ItsValidation,
   AppModule,
@@ -139,6 +140,12 @@ export const api = {
 
   deleteItsBlock: (id: string, blockId: string) =>
     request<void>(`/pv/api/projects/${id}/its-design/blocks/${blockId}`, { method: "DELETE" }),
+
+  applyItsHierarchy: (id: string, blockId: string, hierarchy: ItsHierarchy) =>
+    request<{ block: ItsPvBlock; validation: ItsValidation }>(
+      `/pv/api/projects/${id}/its-design/blocks/${blockId}/apply-hierarchy`,
+      { method: "POST", body: JSON.stringify(hierarchy) },
+    ),
 
   syncItsStrings: (id: string, blockId: string) =>
     request<{ block: ItsPvBlock; validation: ItsValidation }>(

@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 
 from app.its_design import (
+    apply_hierarchy,
     default_block,
     empty_block,
     find_block,
@@ -12,7 +13,7 @@ from app.its_design import (
     sync_strings_from_tables,
     validate_block,
 )
-from app.models import ItsBlockCreate, ItsBlockPatch, ItsDesign, ItsPvBlock, Project
+from app.models import ItsBlockCreate, ItsBlockPatch, ItsDesign, ItsHierarchy, ItsPvBlock, Project
 from app import storage
 
 router = APIRouter(prefix="/api/projects", tags=["its-design"])
@@ -76,7 +77,11 @@ def patch_its_block(project_id: str, block_id: str, body: ItsBlockPatch):
     existing = _require_block(project, block_id)
     data = existing.model_dump()
     data.update(body.model_dump(exclude_unset=True))
-    block = sync_strings_from_tables(ItsPvBlock.model_validate(data))
+    block = ItsPvBlock.model_validate(data)
+    if body.hierarchy is not None:
+        block = apply_hierarchy(block, body.hierarchy)
+    else:
+        block = sync_strings_from_tables(block)
     project.its_design = replace_block(project.its_design, block)
     saved = storage.save_project(project)
     return find_block(saved.its_design, block_id)
@@ -90,6 +95,16 @@ def delete_its_block(project_id: str, block_id: str):
         blocks=[block for block in project.its_design.blocks if block.id != block_id]
     )
     storage.save_project(project)
+
+
+@router.post("/{project_id}/its-design/blocks/{block_id}/apply-hierarchy")
+def apply_its_hierarchy(project_id: str, block_id: str, body: ItsHierarchy):
+    project = _require_project(project_id)
+    block = apply_hierarchy(_require_block(project, block_id), body)
+    project.its_design = replace_block(project.its_design, block)
+    saved = storage.save_project(project)
+    applied = find_block(saved.its_design, block_id)
+    return {"block": applied, "validation": validate_block(applied)}
 
 
 @router.post("/{project_id}/its-design/blocks/{block_id}/sync-strings")

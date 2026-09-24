@@ -196,3 +196,85 @@ def test_unknown_block_404(client):
     response = client.get(f"/pv/api/projects/{project_id}/its-design/blocks/nope")
     assert response.status_code == 404
     client.delete(f"/pv/api/projects/{project_id}")
+
+
+def test_apply_hierarchy_creates_instances_and_grouping(client):
+    project_id = _create_project(client, seed=False)
+    block = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks",
+        json={"name": "From specs", "seed": False},
+    ).json()
+    assert block["items"] == []
+    assert block["strings"] == []
+    applied = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/apply-hierarchy",
+        json={
+            "modules_per_string": 28,
+            "strings_per_table": 2,
+            "table_count": 8,
+            "string_box_count": 4,
+            "its_count": 1,
+            "auto_assign": True,
+        },
+    )
+    assert applied.status_code == 200
+    body = applied.json()
+    synced = body["block"]
+    report = body["validation"]
+    assert synced["hierarchy"]["table_count"] == 8
+    assert report["string_count"] == 16
+    assert report["string_box_count"] == 4
+    assert report["its_count"] == 1
+    assert report["assigned_strings"] == 16
+    assert report["orphan_strings"] == 0
+    assert report["orphan_boxes"] == 0
+    assert report["overloaded_boxes"] == 0
+    string_spec = next(s for s in synced["catalog"] if s["kind"] == "string")
+    assert string_spec["modules_in_series"] == 28
+    client.delete(f"/pv/api/projects/{project_id}")
+
+
+def test_apply_hierarchy_replaces_previous_table_strings(client):
+    project_id = _create_project(client, seed=False)
+    block = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks",
+        json={"name": "Resize", "seed": True},
+    ).json()
+    assert len(block["strings"]) == 128
+    report = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/apply-hierarchy",
+        json={
+            "modules_per_string": 28,
+            "strings_per_table": 2,
+            "table_count": 8,
+            "string_box_count": 4,
+            "its_count": 1,
+            "auto_assign": True,
+        },
+    ).json()["validation"]
+    assert report["string_count"] == 16
+    assert report["string_box_count"] == 4
+    assert report["assigned_strings"] == 16
+    client.delete(f"/pv/api/projects/{project_id}")
+
+
+def test_apply_hierarchy_overload_when_boxes_too_few(client):
+    project_id = _create_project(client, seed=False)
+    block = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks",
+        json={"name": "Tight", "seed": False},
+    ).json()
+    report = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/apply-hierarchy",
+        json={
+            "modules_per_string": 28,
+            "strings_per_table": 2,
+            "table_count": 16,
+            "string_box_count": 1,
+            "its_count": 1,
+            "auto_assign": True,
+        },
+    ).json()["validation"]
+    assert report["string_count"] == 32
+    assert report["overloaded_boxes"] == 1
+    client.delete(f"/pv/api/projects/{project_id}")

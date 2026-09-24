@@ -300,6 +300,15 @@ export interface ItsAssignments {
   box_to_its: Record<string, string>;
 }
 
+export interface ItsHierarchy {
+  modules_per_string: number;
+  strings_per_table: number;
+  table_count: number;
+  string_box_count: number;
+  its_count: number;
+  auto_assign: boolean;
+}
+
 export interface ItsPvBlock {
   id: string;
   name: string;
@@ -308,6 +317,7 @@ export interface ItsPvBlock {
   items: ItsPlacedItem[];
   strings: ItsString[];
   assignments: ItsAssignments;
+  hierarchy?: ItsHierarchy;
   view: LayoutView;
 }
 

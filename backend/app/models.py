@@ -318,6 +318,15 @@ class ItsAssignments(BaseModel):
     box_to_its: dict[str, str] = Field(default_factory=dict)
 
 
+class ItsHierarchy(BaseModel):
+    modules_per_string: int = Field(ge=1, default=28)
+    strings_per_table: int = Field(ge=1, default=2)
+    table_count: int = Field(ge=0, default=32)
+    string_box_count: int = Field(ge=0, default=8)
+    its_count: int = Field(ge=0, default=1)
+    auto_assign: bool = True
+
+
 class ItsPvBlock(BaseModel):
     id: str
     name: str
@@ -326,6 +335,7 @@ class ItsPvBlock(BaseModel):
     items: list[ItsPlacedItem] = Field(default_factory=list)
     strings: list[ItsString] = Field(default_factory=list)
     assignments: ItsAssignments = Field(default_factory=ItsAssignments)
+    hierarchy: ItsHierarchy = Field(default_factory=ItsHierarchy)
     view: LayoutView = Field(default_factory=LayoutView)
 
 
@@ -346,6 +356,7 @@ class ItsBlockPatch(BaseModel):
     items: Optional[list[ItsPlacedItem]] = None
     strings: Optional[list[ItsString]] = None
     assignments: Optional[ItsAssignments] = None
+    hierarchy: Optional[ItsHierarchy] = None
     view: Optional[LayoutView] = None
 
 

@@ -5,6 +5,7 @@ import { ConceptualPage } from "./pages/ConceptualPage";
 import { ConfigPage } from "./pages/ConfigPage";
 import { ItsAssetsPage } from "./pages/ItsAssetsPage";
 import { ItsGroupingPage } from "./pages/ItsGroupingPage";
+import { ItsHierarchyPage } from "./pages/ItsHierarchyPage";
 import { ItsLayoutPage } from "./pages/ItsLayoutPage";
 import { ItsWorkspace, LayoutConfigWorkspace, RedirectLegacyProject } from "./pages/ItsWorkspace";
 import { LayoutPage } from "./pages/LayoutPage";
@@ -41,6 +42,7 @@ export default function App() {
             <Route element={<ItsWorkspace />}>
               <Route index element={<Navigate to="assets" replace />} />
               <Route path="assets" element={<ItsAssetsPage />} />
+              <Route path="hierarchy" element={<ItsHierarchyPage />} />
               <Route path="grouping" element={<ItsGroupingPage />} />
             </Route>
           </Route>

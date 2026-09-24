@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Button, Card } from "../components/ui";
 import {
   assignBoxesToIts,
@@ -11,6 +11,8 @@ import {
 import type { ItsOutletContext } from "./ItsWorkspace";
 
 export function ItsGroupingPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { block, updateBlock } = useOutletContext<ItsOutletContext>();
   const [pickedStrings, setPickedStrings] = useState<string[]>([]);
   const [pickedBoxes, setPickedBoxes] = useState<string[]>([]);
@@ -62,6 +64,18 @@ export function ItsGroupingPage() {
             {validation.string_count} strings · {validation.assigned_strings} assigned ·{" "}
             {validation.orphan_strings} orphan
           </p>
+          {validation.string_count === 0 || validation.string_box_count === 0 || validation.its_count === 0 ? (
+            <p className="mt-2 text-[12px] text-warn">
+              Grouping needs instances from Hierarchy.{" "}
+              <button
+                type="button"
+                className="text-accent"
+                onClick={() => id && navigate(`/its/${id}/hierarchy`)}
+              >
+                Define hierarchy first
+              </button>
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2 border-b border-line px-4 py-2">
           <Button
