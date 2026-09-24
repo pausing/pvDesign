@@ -90,10 +90,9 @@ export function syncStringsFromTables(block: ItsPvBlock): ItsPvBlock {
     }
   }
 
-  const tableIds = new Set(itemsOf(block, "table").map((t) => t.id));
   for (const string of block.strings) {
     if (valid.has(string.id)) continue;
-    if (string.table_id && tableIds.has(string.table_id)) continue;
+    if (string.table_id) continue;
     nextStrings.push(string);
     valid.add(string.id);
   }

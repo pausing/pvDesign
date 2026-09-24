@@ -65,11 +65,11 @@ def sync_strings_from_tables(block: ItsPvBlock) -> ItsPvBlock:
                 )
             )
 
-    # Keep any manually added strings that are not table-generated
+    # Keep only loose (non-table) strings. Drop strings from removed tables.
     for string in block.strings:
         if string.id in valid_ids:
             continue
-        if string.table_id and any(t.id == string.table_id for t in items_of(block, "table")):
+        if string.table_id:
             continue
         next_strings.append(string)
         valid_ids.add(string.id)
