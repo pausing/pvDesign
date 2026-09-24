@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import { Button, Card } from "../components/ui";
 import {
   assignBoxesToIts,
@@ -11,8 +11,6 @@ import {
 import type { ItsOutletContext } from "./ItsWorkspace";
 
 export function ItsGroupingPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
   const { block, updateBlock } = useOutletContext<ItsOutletContext>();
   const [pickedStrings, setPickedStrings] = useState<string[]>([]);
   const [pickedBoxes, setPickedBoxes] = useState<string[]>([]);
@@ -57,15 +55,8 @@ export function ItsGroupingPage() {
         <div className="border-b border-line px-4 py-3">
           <h2 className="text-[15px] font-medium">Electrical grouping</h2>
           <p className="text-[12px] text-muted">
-            Strings from Layout configuration feed string boxes, then the ITS. Select a box or
-            ITS, then assign.{" "}
-            <button
-              type="button"
-              className="text-accent"
-              onClick={() => id && navigate(`/projects/${id}/layout-config/${block.id}`)}
-            >
-              Open layout
-            </button>
+            Strings feed string boxes, then the ITS. Select a box or ITS, then assign. This plant
+            is independent of Layout configuration plants.
           </p>
           <p className="mt-1 text-[12px] text-muted">
             {validation.string_count} strings · {validation.assigned_strings} assigned ·{" "}
@@ -136,7 +127,7 @@ export function ItsGroupingPage() {
               );
             })}
             {boxes.length === 0 ? (
-              <p className="text-[12px] text-muted">No string boxes yet. Place them in Layout configuration.</p>
+              <p className="text-[12px] text-muted">No string boxes yet. Add a seeded PV block or create boxes.</p>
             ) : null}
           </div>
           <p className="mb-2 text-[11px] uppercase tracking-wide text-muted">ITS</p>
@@ -164,7 +155,7 @@ export function ItsGroupingPage() {
               );
             })}
             {skids.length === 0 ? (
-              <p className="text-[12px] text-muted">No ITS yet. Place one in Layout configuration.</p>
+              <p className="text-[12px] text-muted">No ITS yet. Add a seeded PV block or create an ITS.</p>
             ) : null}
           </div>
           <p className="mb-2 text-[11px] uppercase tracking-wide text-muted">Strings</p>
@@ -209,14 +200,14 @@ export function ItsGroupingPage() {
             );
           })}
           {block.strings.length === 0 ? (
-            <p className="text-[12px] text-muted">No strings. Add tables in Layout configuration.</p>
+            <p className="text-[12px] text-muted">No strings yet. Seed a PV block to generate them.</p>
           ) : null}
         </div>
       </section>
       <aside className="min-h-0 overflow-auto p-4">
         <p className="mb-2 text-[11px] uppercase tracking-wide text-muted">Tree</p>
         {skids.length === 0 ? (
-          <p className="text-[12px] text-muted">Place an ITS in Layout configuration to see the tree.</p>
+          <p className="text-[12px] text-muted">No ITS on this plant yet.</p>
         ) : (
           skids.map((skid) => {
             const childBoxes = boxes.filter((b) => block.assignments.box_to_its[b.id] === skid.id);

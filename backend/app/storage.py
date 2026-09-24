@@ -7,8 +7,8 @@ from threading import Lock
 from typing import Optional
 from uuid import uuid4
 
-from app.models import Project, ProjectSummary
-from app.seed import demo_project, utc_now
+from app.models import AppModule, Project, ProjectSummary
+from app.seed import demo_its_project, demo_project, utc_now
 
 _default_data = Path(__file__).resolve().parent.parent / "data"
 DATA_DIR = Path(os.environ.get("PVDES_DATA_DIR") or _default_data)
@@ -43,6 +43,7 @@ def _summary(project: Project) -> dict:
         site=project.site,
         owner=project.owner,
         user_id=project.user_id,
+        module=project.module,
         updated_at=project.updated_at,
         created_at=project.created_at,
     ).model_dump()
@@ -54,14 +55,18 @@ def init_store() -> None:
         items = _read_index()
         if items:
             return
-        project = demo_project()
-        _project_path(project.id).write_text(project.model_dump_json(indent=2), encoding="utf-8")
-        _write_index([_summary(project)])
+        layout = demo_project()
+        its = demo_its_project()
+        _project_path(layout.id).write_text(layout.model_dump_json(indent=2), encoding="utf-8")
+        _project_path(its.id).write_text(its.model_dump_json(indent=2), encoding="utf-8")
+        _write_index([_summary(layout), _summary(its)])
 
 
-def list_projects() -> list[ProjectSummary]:
+def list_projects(module: Optional[AppModule] = None) -> list[ProjectSummary]:
     with _lock:
         items = _read_index()
+    if module:
+        items = [i for i in items if i.get("module", "layout_config") == module]
     items.sort(key=lambda p: p.get("updated_at", ""), reverse=True)
     return [ProjectSummary.model_validate(i) for i in items]
 

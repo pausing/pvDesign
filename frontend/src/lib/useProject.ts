@@ -24,6 +24,7 @@ export function useProject(id: string | undefined) {
           name: next.name,
           site: next.site,
           notes: next.notes,
+          module: next.module,
           catalog: next.catalog,
           topology: next.topology,
           layout: next.layout,

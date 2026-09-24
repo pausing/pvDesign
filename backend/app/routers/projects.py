@@ -16,7 +16,7 @@ from app.electrical import (
     preview_mv,
 )
 from app.identity import owner_from_identity
-from app.models import CatalogPayload, Project, ProjectCreate, ProjectPatch
+from app.models import AppModule, CatalogPayload, Project, ProjectCreate, ProjectPatch
 from app.seed import empty_project, utc_now
 from app import storage
 
@@ -24,8 +24,8 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 
 @router.get("")
-def list_projects():
-    return storage.list_projects()
+def list_projects(module: AppModule | None = Query(default=None)):
+    return storage.list_projects(module)
 
 
 @router.post("", status_code=201)
@@ -38,6 +38,7 @@ def create_project(body: ProjectCreate, request: Request):
         seed_catalog=body.seed_catalog,
         owner=owner,
         user_id=user_id,
+        module=body.module,
     )
     return storage.save_project(project)
 

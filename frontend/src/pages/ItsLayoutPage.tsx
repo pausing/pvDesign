@@ -1,5 +1,5 @@
 import { useRef, useState, type MouseEvent, type WheelEvent } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import { Button, Field, NumInput, TextInput } from "../components/ui";
 import {
   firstSpec,
@@ -16,8 +16,6 @@ type Tool = "select" | ItsItemKind;
 type Selection = { type: "item"; id: string } | null;
 
 export function ItsLayoutPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
   const { block, updateBlock } = useOutletContext<ItsOutletContext>();
   const svgRef = useRef<SVGSVGElement>(null);
   const [tool, setTool] = useState<Tool>("select");
@@ -318,8 +316,8 @@ export function ItsLayoutPage() {
           </div>
         ) : (
           <div className="border-t border-line px-3 py-2 text-[12px] text-muted">
-            Drag to pan. Place tables, string boxes, and the ITS. Table geometry syncs strings for
-            ITS Design grouping.
+            Drag to pan. Place tables, string boxes, and the ITS. Table geometry syncs strings on
+            this layout plant.
           </div>
         )}
       </section>
@@ -327,7 +325,7 @@ export function ItsLayoutPage() {
       <aside className="flex min-h-0 flex-col overflow-auto p-4">
         <h3 className="text-[13px] font-medium">Placed equipment</h3>
         <p className="mt-1 text-[12px] text-muted">
-          Same PV block as ITS Design. After placing gear, assign feeds there.
+          Equipment for this layout plant only. ITS Design has its own plants.
         </p>
         <ul className="mt-3 space-y-2 text-[12px]">
           {tables.map((table) => {
@@ -355,13 +353,6 @@ export function ItsLayoutPage() {
             </li>
           ))}
         </ul>
-        <Button
-          className="mt-4"
-          variant="primary"
-          onClick={() => id && navigate(`/projects/${id}/its/${block.id}/grouping`)}
-        >
-          Group in ITS Design
-        </Button>
       </aside>
     </div>
   );
