@@ -297,14 +297,17 @@ export interface ItsString {
   sort_order?: number;
 }
 
-export type ItsHierarchyNodeKind = "its" | "string_box" | "table" | "string";
-export type ItsHierarchyParentKind = "root" | "its" | "string_box" | "unassigned";
+export type ItsHierarchyType = "its" | "string_box" | "table" | "string" | "module";
+
+export interface ItsHierarchyLevel {
+  kind: ItsHierarchyType;
+  parent_kind: ItsHierarchyType | null;
+  order: number;
+}
 
 export interface ItsHierarchyMove {
-  node_id: string;
-  node_kind: ItsHierarchyNodeKind;
-  parent_id?: string | null;
-  parent_kind: ItsHierarchyParentKind;
+  kind: ItsHierarchyType;
+  parent_kind: ItsHierarchyType | null;
   index?: number | null;
 }
 
@@ -320,7 +323,7 @@ export interface ItsHierarchy {
   string_box_count: number;
   its_count: number;
   auto_assign: boolean;
-  tree_customized?: boolean;
+  levels?: ItsHierarchyLevel[];
 }
 
 export interface ItsPvBlock {

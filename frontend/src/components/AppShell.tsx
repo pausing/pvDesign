@@ -17,6 +17,7 @@ export function AppShell({ module }: { module: AppModule }) {
   const ctx = useProject(id);
   const plantsHref = module === "layout_config" ? "/layout-config" : "/its";
   const groupingActive = location.pathname.endsWith("/grouping");
+  const quantitiesActive = location.pathname.endsWith("/quantities");
   const hierarchyActive = location.pathname.endsWith("/hierarchy");
   const assetsActive = location.pathname.endsWith("/assets");
   const canvasActive = module === "layout_config" && !location.pathname.includes("/tools/");
@@ -110,6 +111,18 @@ export function AppShell({ module }: { module: AppModule }) {
                 }
               >
                 Hierarchy
+              </NavLink>
+              <NavLink
+                to="quantities"
+                className={() =>
+                  `rounded-md px-3 py-1.5 text-[13px] ${
+                    quantitiesActive
+                      ? "bg-accent-dim text-accent"
+                      : "text-muted hover:bg-raised hover:text-text"
+                  }`
+                }
+              >
+                Quantities
               </NavLink>
               <NavLink
                 to="grouping"
