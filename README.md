@@ -3,7 +3,7 @@
 Utility-scale PV plant design tool. Choose a module first; each module has its own plants.
 
 - **Layout configuration** — independent plants for placing table fields, string boxes, and the ITS. Optional catalog / BT-MV / conceptual / plant layout live inside these plants.
-- **ITS Design** — independent plants for asset specs and strings → string box → ITS grouping.
+- **ITS Design** — independent plants for asset specs, hierarchy/quantities, and strings → string box → ITS grouping.
 
 Plants are tagged `module: layout_config | its_design` and do not share a home.
 

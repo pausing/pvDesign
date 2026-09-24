@@ -7,6 +7,7 @@ from app.models import (
     ItsAssetSpec,
     ItsAssignments,
     ItsDesign,
+    ItsHierarchy,
     ItsItemKind,
     ItsPlacedItem,
     ItsPvBlock,
@@ -91,6 +92,162 @@ def sync_strings_from_tables(block: ItsPvBlock) -> ItsPvBlock:
             "assignments": ItsAssignments(string_to_box=string_to_box, box_to_its=box_to_its),
         }
     )
+
+
+def pack_grid(count: int, prefer: int = 8) -> tuple[int, int]:
+    if count <= 0:
+        return 1, 1
+    if count <= prefer:
+        return 1, count
+    for tpr in range(prefer, 0, -1):
+        if count % tpr == 0:
+            return count // tpr, tpr
+    return count, 1
+
+
+def infer_hierarchy(block: ItsPvBlock) -> ItsHierarchy:
+    tables = items_of(block, "table")
+    boxes = items_of(block, "string_box")
+    skids = items_of(block, "its")
+    tracker = first_spec(block, "tracker")
+    string = first_spec(block, "string")
+    table_count = sum(table.rows * table.tables_per_row for table in tables)
+    strings_per = 1
+    if tracker and tracker.strings_per_tracker and tracker.strings_per_tracker > 0:
+        strings_per = tracker.strings_per_tracker
+    modules = 28
+    if string and string.modules_in_series and string.modules_in_series > 0:
+        modules = string.modules_in_series
+    existing = block.hierarchy
+    return ItsHierarchy(
+        modules_per_string=modules,
+        strings_per_table=strings_per,
+        table_count=table_count or existing.table_count,
+        string_box_count=len(boxes) or existing.string_box_count,
+        its_count=len(skids) or existing.its_count,
+        auto_assign=existing.auto_assign,
+    )
+
+
+def _resize_items(
+    existing: list[ItsPlacedItem],
+    kind: ItsItemKind,
+    count: int,
+    spec_id: Optional[str],
+    prefix: str,
+    label: str,
+    base_x: float,
+    base_y: float,
+    dx: float = 80,
+    dy: float = 56,
+) -> list[ItsPlacedItem]:
+    kept = [item for item in existing if item.kind == kind]
+    next_items: list[ItsPlacedItem] = []
+    for index in range(count):
+        if index < len(kept):
+            item = kept[index]
+            next_items.append(item.model_copy(update={"spec_id": spec_id or item.spec_id}))
+            continue
+        col = index % 4
+        row = index // 4
+        next_items.append(
+            ItsPlacedItem(
+                id=f"{prefix}-{index + 1:03d}",
+                name=f"{label} {index + 1:02d}",
+                kind=kind,
+                spec_id=spec_id,
+                x=base_x + col * dx,
+                y=base_y + row * dy,
+            )
+        )
+    return next_items
+
+
+def apply_hierarchy(block: ItsPvBlock, hierarchy: Optional[ItsHierarchy] = None) -> ItsPvBlock:
+    """Build tables / boxes / ITS / strings from hierarchy counts. Specs stay in the catalog."""
+    hier = hierarchy or block.hierarchy
+    catalog = list(block.catalog)
+    string_spec = first_spec(block, "string")
+    tracker_spec = first_spec(block, "tracker")
+    box_spec = first_spec(block, "string_box")
+    its_spec = first_spec(block, "its")
+
+    if string_spec:
+        catalog = [
+            spec.model_copy(update={"modules_in_series": hier.modules_per_string})
+            if spec.id == string_spec.id
+            else spec
+            for spec in catalog
+        ]
+    if tracker_spec:
+        catalog = [
+            spec.model_copy(update={"strings_per_tracker": hier.strings_per_table})
+            if spec.id == tracker_spec.id
+            else spec
+            for spec in catalog
+        ]
+
+    working = block.model_copy(update={"catalog": catalog, "hierarchy": hier})
+    string_spec = first_spec(working, "string")
+    tracker_spec = first_spec(working, "tracker")
+    box_spec = first_spec(working, "string_box")
+    its_spec = first_spec(working, "its")
+
+    rows, tpr = pack_grid(max(hier.table_count, 0))
+    tables: list[ItsPlacedItem] = []
+    if hier.table_count > 0:
+        existing_tables = items_of(block, "table")
+        first = existing_tables[0] if existing_tables else None
+        tables = [
+            ItsPlacedItem(
+                id=first.id if first else "hier-tbl-001",
+                name=first.name if first else "Table field",
+                kind="table",
+                spec_id=tracker_spec.id if tracker_spec else (first.spec_id if first else None),
+                x=first.x if first else 48,
+                y=first.y if first else 48,
+                rows=rows,
+                tables_per_row=tpr,
+            )
+        ]
+
+    boxes = _resize_items(
+        items_of(block, "string_box"),
+        "string_box",
+        hier.string_box_count,
+        box_spec.id if box_spec else None,
+        "hier-sb",
+        "SB",
+        420,
+        56,
+    )
+    skids = _resize_items(
+        items_of(block, "its"),
+        "its",
+        hier.its_count,
+        its_spec.id if its_spec else None,
+        "hier-its",
+        "ITS",
+        620,
+        80,
+        dx=100,
+        dy=70,
+    )
+
+    next_block = sync_strings_from_tables(
+        working.model_copy(update={"items": [*tables, *boxes, *skids]})
+    )
+    if hier.auto_assign and next_block.strings and boxes:
+        string_to_box = {
+            string.id: boxes[index % len(boxes)].id for index, string in enumerate(next_block.strings)
+        }
+        box_to_its = {}
+        if skids:
+            box_to_its = {box.id: skids[index % len(skids)].id for index, box in enumerate(boxes)}
+        next_block = next_block.model_copy(
+            update={"assignments": ItsAssignments(string_to_box=string_to_box, box_to_its=box_to_its)}
+        )
+    return next_block
 
 
 def validate_block(block: ItsPvBlock) -> ItsValidation:
@@ -321,7 +478,20 @@ def default_block(name: str = "PV block 1", notes: str = "") -> ItsPvBlock:
     for index, string in enumerate(block.strings):
         string_to_box[string.id] = boxes[index % len(boxes)].id
     box_to_its = {box.id: skid.id for box in boxes}
-    return block.model_copy(update={"assignments": ItsAssignments(string_to_box=string_to_box, box_to_its=box_to_its)})
+    hierarchy = ItsHierarchy(
+        modules_per_string=28,
+        strings_per_table=2,
+        table_count=64,
+        string_box_count=8,
+        its_count=1,
+        auto_assign=True,
+    )
+    return block.model_copy(
+        update={
+            "assignments": ItsAssignments(string_to_box=string_to_box, box_to_its=box_to_its),
+            "hierarchy": hierarchy,
+        }
+    )
 
 
 def empty_block(block_id: str, name: str, notes: str = "") -> ItsPvBlock:

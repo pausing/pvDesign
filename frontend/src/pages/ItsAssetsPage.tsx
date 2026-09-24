@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Button, Card, Field, NumInput, TextInput } from "../components/ui";
 import { firstSpec, newItsSpec } from "../lib/itsDesign";
 import { ITS_ASSET_KINDS, ITS_KIND_COLOR, ITS_KIND_FIELDS, ITS_KIND_LABEL } from "../lib/itsKinds";
@@ -7,6 +7,8 @@ import type { ItsOutletContext } from "./ItsWorkspace";
 import type { ItsAssetKind, ItsAssetSpec } from "../types/project";
 
 export function ItsAssetsPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { block, updateBlock } = useOutletContext<ItsOutletContext>();
   const [kindFilter, setKindFilter] = useState<ItsAssetKind | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -53,11 +55,14 @@ export function ItsAssetsPage() {
       <section className="flex min-h-0 flex-col border-b border-line lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
           <div>
-            <h2 className="text-[15px] font-medium">Asset hierarchy</h2>
+            <h2 className="text-[15px] font-medium">Asset specs</h2>
             <p className="text-[12px] text-muted">
-              Specs for this PV block: module → string → tracker → string box → ITS
+              Define module, string, tracker, string box, and ITS ratings. Then set quantities on
+              Hierarchy.
             </p>
           </div>
+          <div className="flex items-center gap-2">
+          <Button onClick={() => id && navigate(`/its/${id}/hierarchy`)}>Set hierarchy</Button>
           <select
             className="text-[13px]"
             defaultValue=""
@@ -74,6 +79,7 @@ export function ItsAssetsPage() {
               </option>
             ))}
           </select>
+          </div>
         </div>
         <div className="flex items-end gap-3 border-b border-line px-4 py-3">
           <Field label="PV block name" className="max-w-sm flex-1">

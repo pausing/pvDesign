@@ -4,6 +4,7 @@ import type {
   ItsAssetSpec,
   ItsAssignments,
   ItsDesign,
+  ItsHierarchy,
   ItsItemKind,
   ItsPlacedItem,
   ItsPvBlock,
@@ -113,6 +114,124 @@ export function syncStringsFromTables(block: ItsPvBlock): ItsPvBlock {
     strings: nextStrings,
     assignments: { string_to_box, box_to_its },
   };
+}
+
+export const DEFAULT_HIERARCHY: ItsHierarchy = {
+  modules_per_string: 28,
+  strings_per_table: 2,
+  table_count: 32,
+  string_box_count: 8,
+  its_count: 1,
+  auto_assign: true,
+};
+
+export function packGrid(count: number, prefer = 8): { rows: number; tables_per_row: number } {
+  if (count <= 0) return { rows: 1, tables_per_row: 1 };
+  if (count <= prefer) return { rows: 1, tables_per_row: count };
+  for (let tpr = prefer; tpr >= 1; tpr -= 1) {
+    if (count % tpr === 0) return { rows: count / tpr, tables_per_row: tpr };
+  }
+  return { rows: count, tables_per_row: 1 };
+}
+
+export function inferHierarchy(block: ItsPvBlock): ItsHierarchy {
+  const tables = itemsOf(block, "table");
+  const boxes = itemsOf(block, "string_box");
+  const skids = itemsOf(block, "its");
+  const tracker = firstSpec(block, "tracker");
+  const string = firstSpec(block, "string");
+  const tableCount = tables.reduce((sum, t) => sum + t.rows * t.tables_per_row, 0);
+  const existing = block.hierarchy ?? DEFAULT_HIERARCHY;
+  return {
+    modules_per_string: string?.modules_in_series && string.modules_in_series > 0 ? string.modules_in_series : existing.modules_per_string,
+    strings_per_table:
+      tracker?.strings_per_tracker && tracker.strings_per_tracker > 0
+        ? tracker.strings_per_tracker
+        : existing.strings_per_table,
+    table_count: tableCount || existing.table_count,
+    string_box_count: boxes.length || existing.string_box_count,
+    its_count: skids.length || existing.its_count,
+    auto_assign: existing.auto_assign,
+  };
+}
+
+export function applyHierarchy(block: ItsPvBlock, hierarchy: ItsHierarchy): ItsPvBlock {
+  let catalog = block.catalog.map((spec) => {
+    if (spec.kind === "string") return { ...spec, modules_in_series: hierarchy.modules_per_string };
+    if (spec.kind === "tracker") return { ...spec, strings_per_tracker: hierarchy.strings_per_table };
+    return spec;
+  });
+  const next: ItsPvBlock = { ...block, catalog, hierarchy };
+  const tracker = firstSpec(next, "tracker");
+  const boxSpec = firstSpec(next, "string_box");
+  const itsSpec = firstSpec(next, "its");
+  const { rows, tables_per_row } = packGrid(hierarchy.table_count);
+  const existingTable = itemsOf(block, "table")[0];
+  const tables =
+    hierarchy.table_count > 0
+      ? [
+          {
+            id: existingTable?.id ?? "hier-tbl-001",
+            name: existingTable?.name ?? "Table field",
+            kind: "table" as const,
+            spec_id: tracker?.id ?? existingTable?.spec_id ?? null,
+            x: existingTable?.x ?? 48,
+            y: existingTable?.y ?? 48,
+            rows,
+            tables_per_row,
+          },
+        ]
+      : [];
+  const boxes = resizeKind(itemsOf(block, "string_box"), hierarchy.string_box_count, "string_box", "hier-sb", "SB", boxSpec?.id ?? null, 420, 56);
+  const skids = resizeKind(itemsOf(block, "its"), hierarchy.its_count, "its", "hier-its", "ITS", itsSpec?.id ?? null, 620, 80, 100, 70);
+  let synced = syncStringsFromTables({ ...next, items: [...tables, ...boxes, ...skids] });
+  if (hierarchy.auto_assign && synced.strings.length && boxes.length) {
+    const string_to_box: Record<string, string> = {};
+    synced.strings.forEach((s, i) => {
+      string_to_box[s.id] = boxes[i % boxes.length].id;
+    });
+    const box_to_its: Record<string, string> = {};
+    if (skids.length) {
+      boxes.forEach((b, i) => {
+        box_to_its[b.id] = skids[i % skids.length].id;
+      });
+    }
+    synced = { ...synced, assignments: { string_to_box, box_to_its } };
+  }
+  return synced;
+}
+
+function resizeKind(
+  existing: ItsPlacedItem[],
+  count: number,
+  kind: ItsItemKind,
+  prefix: string,
+  label: string,
+  specId: string | null,
+  baseX: number,
+  baseY: number,
+  dx = 80,
+  dy = 56,
+): ItsPlacedItem[] {
+  const next: ItsPlacedItem[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const prev = existing[index];
+    if (prev) {
+      next.push({ ...prev, spec_id: specId ?? prev.spec_id });
+      continue;
+    }
+    next.push({
+      id: `${prefix}-${String(index + 1).padStart(3, "0")}`,
+      name: `${label} ${String(index + 1).padStart(2, "0")}`,
+      kind,
+      spec_id: specId,
+      x: baseX + (index % 4) * dx,
+      y: baseY + Math.floor(index / 4) * dy,
+      rows: 1,
+      tables_per_row: 1,
+    });
+  }
+  return next;
 }
 
 export function validateItsBlock(block: ItsPvBlock): ItsValidation {
