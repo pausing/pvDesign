@@ -4,10 +4,10 @@ import { useProject } from "../lib/useProject";
 import type { Project } from "../types/project";
 import { Button, StatusDot } from "./ui";
 
-const plantTabs = [
-  { to: "config", label: "Config" },
-  { to: "conceptual", label: "Conceptual" },
-  { to: "layout", label: "Layout" },
+const plantTools = [
+  { to: "plant/config", label: "Catalog & BT/MV" },
+  { to: "plant/conceptual", label: "Conceptual" },
+  { to: "plant/layout", label: "Plant layout" },
 ];
 
 export function AppShell() {
@@ -15,8 +15,10 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const ctx = useProject(id);
-  const itsActive = location.pathname.includes("/its");
-  const homeActive = Boolean(id) && location.pathname.endsWith(`/projects/${id}`);
+  const itsActive = /\/its(\/|$)/.test(location.pathname);
+  const layoutConfigActive = location.pathname.includes("/layout-config");
+  const plantActive = location.pathname.includes("/plant/");
+  const homeActive = Boolean(id) && /\/projects\/[^/]+$/.test(location.pathname);
 
   const exportProject = () => {
     if (!ctx.project) return;
@@ -27,7 +29,7 @@ export function AppShell() {
     try {
       const data = (await pickJsonFile()) as Project;
       const imported = await api.importProject(data);
-      navigate(`/projects/${imported.id}/config`);
+      navigate(`/projects/${imported.id}`);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Import failed");
     }
@@ -66,21 +68,18 @@ export function AppShell() {
           >
             Modules
           </NavLink>
-          <span className="px-1 text-[11px] uppercase tracking-wide text-muted">Plant</span>
-          {plantTabs.map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              className={({ isActive }) =>
-                `rounded-md px-3 py-1.5 text-[13px] ${
-                  isActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
-                }`
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
-          <span className="px-1 text-[11px] uppercase tracking-wide text-muted">ITS</span>
+          <NavLink
+            to="layout-config"
+            className={() =>
+              `rounded-md px-3 py-1.5 text-[13px] ${
+                layoutConfigActive
+                  ? "bg-accent-dim text-accent"
+                  : "text-muted hover:bg-raised hover:text-text"
+              }`
+            }
+          >
+            Layout configuration
+          </NavLink>
           <NavLink
             to="its"
             className={() =>
@@ -91,6 +90,20 @@ export function AppShell() {
           >
             ITS Design
           </NavLink>
+          <select
+            className={`ml-1 text-[12px] ${plantActive ? "text-accent" : "text-muted"}`}
+            value={plantTools.find((t) => location.pathname.includes(`/${t.to}`))?.to ?? ""}
+            onChange={(e) => {
+              if (e.target.value) navigate(e.target.value);
+            }}
+          >
+            <option value="">Plant tools…</option>
+            {plantTools.map((tool) => (
+              <option key={tool.to} value={tool.to}>
+                {tool.label}
+              </option>
+            ))}
+          </select>
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <StatusDot status={ctx.status} />

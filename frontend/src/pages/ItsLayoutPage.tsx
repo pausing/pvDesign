@@ -1,33 +1,27 @@
-import { useMemo, useRef, useState, type MouseEvent, type WheelEvent } from "react";
-import { useOutletContext } from "react-router-dom";
-import { Button, Card, Field, NumInput, TextInput } from "../components/ui";
+import { useRef, useState, type MouseEvent, type WheelEvent } from "react";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { Button, Field, NumInput, TextInput } from "../components/ui";
 import {
-  assignBoxesToIts,
-  assignStringsToBox,
   firstSpec,
   itemsOf,
   newItsItem,
   specById,
   stringsForTable,
-  validateItsBlock,
 } from "../lib/itsDesign";
 import { ITS_ITEM_LABEL, ITS_KIND_COLOR } from "../lib/itsKinds";
 import type { ItsItemKind, ItsPlacedItem } from "../types/project";
 import type { ItsOutletContext } from "./ItsWorkspace";
 
 type Tool = "select" | ItsItemKind;
-type Selection =
-  | { type: "item"; id: string }
-  | { type: "string"; id: string }
-  | null;
+type Selection = { type: "item"; id: string } | null;
 
 export function ItsLayoutPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { block, updateBlock } = useOutletContext<ItsOutletContext>();
   const svgRef = useRef<SVGSVGElement>(null);
   const [tool, setTool] = useState<Tool>("select");
   const [selection, setSelection] = useState<Selection>(null);
-  const [pickedStrings, setPickedStrings] = useState<string[]>([]);
-  const [pickedBoxes, setPickedBoxes] = useState<string[]>([]);
   const moved = useRef(false);
   const drag = useRef<{
     kind: "pan" | "item";
@@ -39,13 +33,11 @@ export function ItsLayoutPage() {
   } | null>(null);
 
   const view = block.view ?? { x: 0, y: 0, zoom: 1 };
-  const validation = useMemo(() => validateItsBlock(block), [block]);
   const tables = itemsOf(block, "table");
   const boxes = itemsOf(block, "string_box");
   const skids = itemsOf(block, "its");
+  const stringCount = block.strings.length;
   const selectedItem = selection?.type === "item" ? block.items.find((i) => i.id === selection.id) : null;
-  const selectedBox = selectedItem?.kind === "string_box" ? selectedItem : null;
-  const selectedIts = selectedItem?.kind === "its" ? selectedItem : null;
 
   const clientToWorld = (e: MouseEvent | WheelEvent) => {
     const svg = svgRef.current;
@@ -139,33 +131,8 @@ export function ItsLayoutPage() {
     setView({ zoom: nextZoom });
   };
 
-  const toggleString = (id: string) => {
-    setPickedStrings((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
-
-  const toggleBox = (id: string) => {
-    setPickedBoxes((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
-
-  const assignPickedStrings = (boxId: string | null) => {
-    if (!pickedStrings.length) return;
-    updateBlock((current) => assignStringsToBox(current, pickedStrings, boxId));
-    setPickedStrings([]);
-  };
-
-  const assignPickedBoxes = (itsId: string | null) => {
-    if (!pickedBoxes.length) return;
-    updateBlock((current) => assignBoxesToIts(current, pickedBoxes, itsId));
-    setPickedBoxes([]);
-  };
-
-  const assignTableToBox = (tableId: string, boxId: string) => {
-    const ids = block.strings.filter((s) => s.table_id === tableId).map((s) => s.id);
-    updateBlock((current) => assignStringsToBox(current, ids, boxId));
-  };
-
   const usedOnBox = (boxId: string) =>
-    Object.values(block.assignments.string_to_box).filter((id) => id === boxId).length;
+    Object.values(block.assignments.string_to_box).filter((xid) => xid === boxId).length;
 
   return (
     <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[1fr_340px]">
@@ -184,8 +151,8 @@ export function ItsLayoutPage() {
             </Button>
           ))}
           <span className="ml-auto text-[12px] text-muted">
-            {validation.string_count} strings · {validation.assigned_strings} assigned ·{" "}
-            {validation.orphan_strings} orphan
+            {tables.length} table fields · {boxes.length} boxes · {skids.length} ITS · {stringCount}{" "}
+            strings from geometry
           </span>
         </div>
         <div className="relative min-h-0 flex-1">
@@ -249,12 +216,6 @@ export function ItsLayoutPage() {
                     key={box.id}
                     transform={`translate(${box.x} ${box.y})`}
                     onMouseDown={(e) => onItemMouseDown(e, box)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!moved.current && pickedStrings.length) {
-                        assignPickedStrings(box.id);
-                      }
-                    }}
                     className="cursor-pointer"
                   >
                     <rect
@@ -282,12 +243,6 @@ export function ItsLayoutPage() {
                     key={skid.id}
                     transform={`translate(${skid.x} ${skid.y})`}
                     onMouseDown={(e) => onItemMouseDown(e, skid)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!moved.current && pickedBoxes.length) {
-                        assignPickedBoxes(skid.id);
-                      }
-                    }}
                     className="cursor-pointer"
                   >
                     <rect
@@ -363,156 +318,50 @@ export function ItsLayoutPage() {
           </div>
         ) : (
           <div className="border-t border-line px-3 py-2 text-[12px] text-muted">
-            Drag to pan. Place tables, string boxes, and the ITS. Select a string box, then assign
-            strings from the list — or click a box after multi-selecting strings.
+            Drag to pan. Place tables, string boxes, and the ITS. Table geometry syncs strings for
+            ITS Design grouping.
           </div>
         )}
       </section>
 
-      <aside className="flex min-h-0 flex-col overflow-hidden">
-        <div className="border-b border-line px-3 py-2">
-          <h3 className="text-[13px] font-medium">Electrical grouping</h3>
-          <p className="text-[11px] text-muted">
-            Strings → string box → ITS. Select a box or ITS on the canvas, then assign.
-          </p>
-        </div>
-        <div className="flex gap-2 border-b border-line px-3 py-2">
-          <Button
-            variant="primary"
-            disabled={!pickedStrings.length || !selectedBox}
-            onClick={() => selectedBox && assignPickedStrings(selectedBox.id)}
-          >
-            Strings → box
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!pickedBoxes.length || !selectedIts}
-            onClick={() => selectedIts && assignPickedBoxes(selectedIts.id)}
-          >
-            Boxes → ITS
-          </Button>
-          <Button variant="ghost" onClick={() => assignPickedStrings(null)} disabled={!pickedStrings.length}>
-            Unassign
-          </Button>
-        </div>
-        {validation.warnings.length ? (
-          <div className="max-h-28 overflow-auto border-b border-line px-3 py-2">
-            {validation.warnings.map((w, i) => (
-              <p
-                key={`${w.code}-${i}`}
-                className={`text-[11px] ${
-                  w.level === "fail" ? "text-danger" : w.level === "warn" ? "text-warn" : "text-muted"
-                }`}
-              >
-                {w.message}
-              </p>
-            ))}
-          </div>
-        ) : (
-          <p className="border-b border-line px-3 py-2 text-[11px] text-accent">Grouping looks complete.</p>
-        )}
-        <div className="min-h-0 flex-1 overflow-auto px-3 py-2">
-          <p className="mb-1 text-[11px] uppercase tracking-wide text-muted">Strings</p>
+      <aside className="flex min-h-0 flex-col overflow-auto p-4">
+        <h3 className="text-[13px] font-medium">Placed equipment</h3>
+        <p className="mt-1 text-[12px] text-muted">
+          Same PV block as ITS Design. After placing gear, assign feeds there.
+        </p>
+        <ul className="mt-3 space-y-2 text-[12px]">
           {tables.map((table) => {
-            const strings = block.strings.filter((s) => s.table_id === table.id);
+            const tracker = specById(block, table.spec_id) ?? firstSpec(block, "tracker");
             return (
-              <div key={table.id} className="mb-3">
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="text-[12px] text-text">{table.name}</span>
-                  {selectedBox ? (
-                    <button
-                      type="button"
-                      className="text-[11px] text-accent"
-                      onClick={() => assignTableToBox(table.id, selectedBox.id)}
-                    >
-                      All → {selectedBox.name}
-                    </button>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {strings.map((string) => {
-                    const boxId = block.assignments.string_to_box[string.id];
-                    const box = boxes.find((b) => b.id === boxId);
-                    const picked = pickedStrings.includes(string.id);
-                    return (
-                      <button
-                        key={string.id}
-                        type="button"
-                        onClick={() => toggleString(string.id)}
-                        className={`rounded px-1.5 py-0.5 text-[10px] ${
-                          picked ? "bg-accent-dim text-accent" : "bg-raised text-muted"
-                        }`}
-                        title={box ? box.name : "Unassigned"}
-                      >
-                        {string.name.replace(`${table.name} · `, "")}
-                        {box ? ` → ${box.name}` : ""}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <li key={table.id}>
+                <button type="button" className="text-left hover:text-accent" onClick={() => setSelection({ type: "item", id: table.id })}>
+                  {table.name} · {table.rows}×{table.tables_per_row} · {stringsForTable(table, tracker)} str
+                </button>
+              </li>
             );
           })}
-          {block.strings.some((s) => !s.table_id) ? (
-            <div className="mb-3">
-              <p className="mb-1 text-[12px]">Loose strings</p>
-              {block.strings
-                .filter((s) => !s.table_id)
-                .map((string) => (
-                  <label key={string.id} className="flex items-center gap-2 text-[12px] text-muted">
-                    <input
-                      type="checkbox"
-                      checked={pickedStrings.includes(string.id)}
-                      onChange={() => toggleString(string.id)}
-                    />
-                    {string.name}
-                  </label>
-                ))}
-            </div>
-          ) : null}
-
-          <p className="mb-1 mt-2 text-[11px] uppercase tracking-wide text-muted">Tree</p>
-          {skids.length === 0 ? (
-            <p className="text-[12px] text-muted">Place an ITS to see the tree.</p>
-          ) : (
-            skids.map((skid) => {
-              const childBoxes = boxes.filter((b) => block.assignments.box_to_its[b.id] === skid.id);
-              return (
-                <Card key={skid.id} className="mb-2 p-2">
-                  <div className="text-[13px] font-medium text-amber">{skid.name}</div>
-                  {childBoxes.map((box) => {
-                    const spec = specById(block, box.spec_id);
-                    const kids = block.strings.filter((s) => block.assignments.string_to_box[s.id] === box.id);
-                    const picked = pickedBoxes.includes(box.id);
-                    return (
-                      <div key={box.id} className="mt-1 pl-2">
-                        <label className="flex items-center gap-2 text-[12px]">
-                          <input type="checkbox" checked={picked} onChange={() => toggleBox(box.id)} />
-                          <span>
-                            {box.name}{" "}
-                            <span className="text-muted">
-                              {kids.length}/{spec?.inputs ?? "∞"}
-                            </span>
-                          </span>
-                        </label>
-                        <div className="pl-6 text-[11px] text-muted">
-                          {kids.length} strings
-                          {kids.length > 0 ? ` · ${kids.slice(0, 3).map((s) => s.name).join(", ")}` : ""}
-                          {kids.length > 3 ? "…" : ""}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {boxes.filter((b) => !block.assignments.box_to_its[b.id]).length ? (
-                    <p className="mt-1 pl-2 text-[11px] text-warn">
-                      {boxes.filter((b) => !block.assignments.box_to_its[b.id]).length} unassigned box(es)
-                    </p>
-                  ) : null}
-                </Card>
-              );
-            })
-          )}
-        </div>
+          {boxes.map((box) => (
+            <li key={box.id}>
+              <button type="button" className="text-left hover:text-accent" onClick={() => setSelection({ type: "item", id: box.id })}>
+                {box.name} · {usedOnBox(box.id)} strings attached
+              </button>
+            </li>
+          ))}
+          {skids.map((skid) => (
+            <li key={skid.id}>
+              <button type="button" className="text-left hover:text-accent" onClick={() => setSelection({ type: "item", id: skid.id })}>
+                {skid.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <Button
+          className="mt-4"
+          variant="primary"
+          onClick={() => id && navigate(`/projects/${id}/its/${block.id}/grouping`)}
+        >
+          Group in ITS Design
+        </Button>
       </aside>
     </div>
   );

@@ -1,9 +1,11 @@
 # PV Design
 
-Utility-scale PV plant design tool. Each project has two modules:
+Utility-scale PV plant design tool. Each project has two modules that share the same PV block (`its_design`):
 
-- **Plant Design** — asset library, hierarchical electrical topology, BT/MV Excel import, conceptual BOM, and a block/row layout planner.
-- **ITS Design** — one PV block end-to-end: module/string/string-box/ITS specs, table-field layout, and string → string box → ITS grouping.
+- **Layout configuration** — place table fields, string boxes, and the ITS. Table geometry syncs strings.
+- **ITS Design** — asset hierarchy and specs, plus strings → string box → ITS grouping with orphan/overload checks.
+
+Older plant-wide catalog, conceptual BOM, BT/MV Excel, and plant layout remain under **Plant tools**.
 
 ## Run locally
 
@@ -27,7 +29,7 @@ npm run dev
 
 Open http://localhost:5173/pv/. A seeded **Demo 100 MW** project is created on first API start.
 
-Open a project → **ITS Design** for the PV-block module (`/pv/projects/:id/its`). Plant Design routes (`config`, `conceptual`, `layout`) are unchanged.
+Open a project → **Layout configuration** (`/pv/projects/:id/layout-config`) or **ITS Design** (`/pv/projects/:id/its`). Legacy plant tools stay at `/pv/projects/:id/plant/config|conceptual|layout`.
 
 Projects are stored as JSON files under `backend/data/projects/`.
 
