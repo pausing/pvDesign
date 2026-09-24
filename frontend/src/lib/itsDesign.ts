@@ -5,7 +5,9 @@ import type {
   ItsAssignments,
   ItsDesign,
   ItsHierarchy,
+  ItsHierarchyLevel,
   ItsHierarchyMove,
+  ItsHierarchyType,
   ItsItemKind,
   ItsPlacedItem,
   ItsPvBlock,
@@ -128,8 +130,37 @@ export const DEFAULT_HIERARCHY: ItsHierarchy = {
   string_box_count: 8,
   its_count: 1,
   auto_assign: true,
-  tree_customized: false,
+  levels: [],
 };
+
+export const HIERARCHY_TYPES: ItsHierarchyType[] = ["its", "string_box", "table", "string", "module"];
+
+export const DEFAULT_TYPE_PARENT: Record<ItsHierarchyType, ItsHierarchyType | null> = {
+  its: null,
+  string_box: "its",
+  table: "string_box",
+  string: "table",
+  module: "string",
+};
+
+export const HIERARCHY_TYPE_LABEL: Record<ItsHierarchyType, string> = {
+  its: "ITS",
+  string_box: "String box",
+  table: "Table field",
+  string: "Strings",
+  module: "Modules",
+};
+
+export function defaultLevels(): ItsHierarchyLevel[] {
+  return HIERARCHY_TYPES.map((kind) => ({ kind, parent_kind: DEFAULT_TYPE_PARENT[kind], order: 0 }));
+}
+
+export function ensureLevels(levels: ItsHierarchyLevel[] | undefined): ItsHierarchyLevel[] {
+  const byKind = new Map((levels ?? []).map((level) => [level.kind, level]));
+  return HIERARCHY_TYPES.map(
+    (kind) => byKind.get(kind) ?? { kind, parent_kind: DEFAULT_TYPE_PARENT[kind], order: 0 },
+  );
+}
 
 export function packGrid(count: number, prefer = 8): { rows: number; tables_per_row: number } {
   if (count <= 0) return { rows: 1, tables_per_row: 1 };
@@ -158,24 +189,28 @@ export function inferHierarchy(block: ItsPvBlock): ItsHierarchy {
     string_box_count: boxes.length || existing.string_box_count,
     its_count: skids.length || existing.its_count,
     auto_assign: existing.auto_assign,
-    tree_customized: existing.tree_customized ?? false,
+    levels: ensureLevels(existing.levels),
   };
 }
 
 export function applyHierarchy(block: ItsPvBlock, hierarchy: ItsHierarchy): ItsPvBlock {
+  const merged: ItsHierarchy = {
+    ...hierarchy,
+    levels: ensureLevels(hierarchy.levels?.length ? hierarchy.levels : block.hierarchy?.levels),
+  };
   let catalog = block.catalog.map((spec) => {
-    if (spec.kind === "string") return { ...spec, modules_in_series: hierarchy.modules_per_string };
-    if (spec.kind === "tracker") return { ...spec, strings_per_tracker: hierarchy.strings_per_table };
+    if (spec.kind === "string") return { ...spec, modules_in_series: merged.modules_per_string };
+    if (spec.kind === "tracker") return { ...spec, strings_per_tracker: merged.strings_per_table };
     return spec;
   });
-  const next: ItsPvBlock = { ...block, catalog, hierarchy };
+  const next: ItsPvBlock = { ...block, catalog, hierarchy: merged };
   const tracker = firstSpec(next, "tracker");
   const boxSpec = firstSpec(next, "string_box");
   const itsSpec = firstSpec(next, "its");
-  const { rows, tables_per_row } = packGrid(hierarchy.table_count);
+  const { rows, tables_per_row } = packGrid(merged.table_count);
   const existingTable = itemsOf(block, "table")[0];
   const tables =
-    hierarchy.table_count > 0
+    merged.table_count > 0
       ? [
           {
             id: existingTable?.id ?? "hier-tbl-001",
@@ -190,10 +225,10 @@ export function applyHierarchy(block: ItsPvBlock, hierarchy: ItsHierarchy): ItsP
           },
         ]
       : [];
-  const boxes = resizeKind(itemsOf(block, "string_box"), hierarchy.string_box_count, "string_box", "hier-sb", "SB", boxSpec?.id ?? null, 420, 56);
-  const skids = resizeKind(itemsOf(block, "its"), hierarchy.its_count, "its", "hier-its", "ITS", itsSpec?.id ?? null, 620, 80, 100, 70);
+  const boxes = resizeKind(itemsOf(block, "string_box"), merged.string_box_count, "string_box", "hier-sb", "SB", boxSpec?.id ?? null, 420, 56);
+  const skids = resizeKind(itemsOf(block, "its"), merged.its_count, "its", "hier-its", "ITS", itsSpec?.id ?? null, 620, 80, 100, 70);
   let synced = syncStringsFromTables({ ...next, items: [...tables, ...boxes, ...skids] });
-  if (hierarchy.auto_assign && synced.strings.length && boxes.length) {
+  if (merged.auto_assign && synced.strings.length && boxes.length) {
     const string_to_box: Record<string, string> = {};
     synced.strings.forEach((s, i) => {
       string_to_box[s.id] = boxes[i % boxes.length].id;
@@ -207,7 +242,7 @@ export function applyHierarchy(block: ItsPvBlock, hierarchy: ItsHierarchy): ItsP
     synced = {
       ...synced,
       assignments: { string_to_box, box_to_its },
-      hierarchy: { ...hierarchy, tree_customized: false },
+      hierarchy: merged,
     };
   }
   return synced;
@@ -380,137 +415,46 @@ export function emptyAssignments(): ItsAssignments {
   return { string_to_box: {}, box_to_its: {} };
 }
 
-export function tableParentBoxId(block: ItsPvBlock, tableId: string): string | null | "split" {
-  const boxes = new Set(
-    block.strings
-      .filter((s) => s.table_id === tableId)
-      .map((s) => block.assignments.string_to_box[s.id])
-      .filter((id): id is string => Boolean(id)),
-  );
-  if (boxes.size === 0) return null;
-  if (boxes.size === 1) return [...boxes][0];
-  return "split";
+export function levelsOf(block: ItsPvBlock): ItsHierarchyLevel[] {
+  return ensureLevels(block.hierarchy?.levels);
+}
+
+export function isDefaultTypeOrder(levels: ItsHierarchyLevel[]): boolean {
+  return ensureLevels(levels).every((level) => level.parent_kind === DEFAULT_TYPE_PARENT[level.kind]);
 }
 
 export function validateHierarchyMove(block: ItsPvBlock, move: ItsHierarchyMove): string | null {
-  const boxIds = new Set(itemsOf(block, "string_box").map((item) => item.id));
-  const itsIds = new Set(itemsOf(block, "its").map((item) => item.id));
-  const tableIds = new Set(itemsOf(block, "table").map((item) => item.id));
-  const stringIds = new Set(block.strings.map((s) => s.id));
-
-  if (move.node_kind === "its") {
-    if (!itsIds.has(move.node_id)) return "That ITS is not in this hierarchy.";
-    if (move.parent_kind !== "root" && move.parent_kind !== "unassigned") return "ITS stays at the root of the tree.";
-    return null;
+  if (!HIERARCHY_TYPES.includes(move.kind)) return "Unknown asset type.";
+  if (move.parent_kind === move.kind) return "A type cannot sit under itself.";
+  if (move.parent_kind && !HIERARCHY_TYPES.includes(move.parent_kind)) return "Unknown parent type.";
+  const parents = new Map(levelsOf(block).map((level) => [level.kind, level.parent_kind]));
+  let cursor = move.parent_kind;
+  const seen = new Set<ItsHierarchyType>();
+  while (cursor) {
+    if (cursor === move.kind) return "That nest would create a cycle.";
+    if (seen.has(cursor)) return "That nest would create a cycle.";
+    seen.add(cursor);
+    cursor = parents.get(cursor) ?? null;
   }
-  if (move.node_kind === "string_box") {
-    if (!boxIds.has(move.node_id)) return "That string box is not in this hierarchy.";
-    if (move.parent_kind === "its") {
-      if (!move.parent_id || !itsIds.has(move.parent_id)) return "Drop a string box on an ITS.";
-      return null;
-    }
-    if (move.parent_kind === "root" || move.parent_kind === "unassigned") return null;
-    return "String boxes belong under an ITS, or in Unassigned.";
-  }
-  if (move.node_kind === "table") {
-    if (!tableIds.has(move.node_id)) return "That table field is not in this hierarchy.";
-    if (move.parent_kind === "its") return "Tables feed string boxes, not ITS directly.";
-    if (move.parent_kind === "string_box") {
-      if (!move.parent_id || !boxIds.has(move.parent_id)) return "Drop a table on a string box.";
-      return null;
-    }
-    if (move.parent_kind === "root" || move.parent_kind === "unassigned") return null;
-    return "Tables belong under a string box, or in Unassigned.";
-  }
-  if (move.node_kind === "string") {
-    if (!stringIds.has(move.node_id)) return "That string is not in this hierarchy.";
-    if (move.parent_kind === "its") return "Strings feed string boxes, not ITS directly.";
-    if (move.parent_kind === "string_box") {
-      if (!move.parent_id || !boxIds.has(move.parent_id)) return "Drop a string on a string box.";
-      return null;
-    }
-    if (move.parent_kind === "root" || move.parent_kind === "unassigned") return null;
-    return "Strings belong under a string box, or in Unassigned.";
-  }
-  return "Unknown hierarchy node.";
-}
-
-function markTreeCustomized(block: ItsPvBlock): ItsPvBlock {
-  const hierarchy = block.hierarchy ?? DEFAULT_HIERARCHY;
-  return { ...block, hierarchy: { ...hierarchy, auto_assign: false, tree_customized: true } };
-}
-
-function reindexKind(items: ItsPlacedItem[], orderedIds: string[]): ItsPlacedItem[] {
-  const order = new Map(orderedIds.map((id, index) => [id, index]));
-  return items.map((item) => (order.has(item.id) ? { ...item, sort_order: order.get(item.id) ?? 0 } : item));
+  return null;
 }
 
 export function moveHierarchyNode(block: ItsPvBlock, move: ItsHierarchyMove): ItsPvBlock {
   const reason = validateHierarchyMove(block, move);
   if (reason) throw new Error(reason);
-
-  if (move.node_kind === "its") {
-    const ordered = sortItems(itemsOf(block, "its"))
-      .map((item) => item.id)
-      .filter((id) => id !== move.node_id);
-    const index = Math.max(0, Math.min(move.index ?? 0, ordered.length));
-    ordered.splice(index, 0, move.node_id);
-    return markTreeCustomized({ ...block, items: reindexKind(block.items, ordered) });
-  }
-
-  if (move.node_kind === "string_box") {
-    const box_to_its = { ...block.assignments.box_to_its };
-    if (move.parent_kind === "its" && move.parent_id) {
-      box_to_its[move.node_id] = move.parent_id;
-    } else {
-      delete box_to_its[move.node_id];
-    }
-    const working = { ...block, assignments: { ...block.assignments, box_to_its } };
-    const siblings = sortItems(itemsOf(working, "string_box"))
-      .filter((item) => {
-        const parent = box_to_its[item.id];
-        if (move.parent_kind === "its") return parent === move.parent_id && item.id !== move.node_id;
-        return !parent && item.id !== move.node_id;
-      })
-      .map((item) => item.id);
-    const index = Math.max(0, Math.min(move.index ?? siblings.length, siblings.length));
-    siblings.splice(index, 0, move.node_id);
-    return markTreeCustomized({ ...working, items: reindexKind(working.items, siblings) });
-  }
-
-  if (move.node_kind === "table") {
-    const stringIds = block.strings.filter((s) => s.table_id === move.node_id).map((s) => s.id);
-    const string_to_box = { ...block.assignments.string_to_box };
-    if (move.parent_kind === "string_box" && move.parent_id) {
-      for (const id of stringIds) string_to_box[id] = move.parent_id;
-    } else {
-      for (const id of stringIds) delete string_to_box[id];
-    }
-    const tables = sortItems(itemsOf(block, "table"))
-      .map((item) => item.id)
-      .filter((id) => id !== move.node_id);
-    const index = Math.max(0, Math.min(move.index ?? tables.length, tables.length));
-    tables.splice(index, 0, move.node_id);
-    return markTreeCustomized({
-      ...block,
-      items: reindexKind(block.items, tables),
-      assignments: { ...block.assignments, string_to_box },
-    });
-  }
-
-  const string_to_box = { ...block.assignments.string_to_box };
-  if (move.parent_kind === "string_box" && move.parent_id) {
-    string_to_box[move.node_id] = move.parent_id;
-  } else {
-    delete string_to_box[move.node_id];
-  }
-  const ordered = block.strings.map((s) => s.id).filter((id) => id !== move.node_id);
-  const index = Math.max(0, Math.min(move.index ?? ordered.length, ordered.length));
-  ordered.splice(index, 0, move.node_id);
-  const order = new Map(ordered.map((id, i) => [id, i]));
-  return markTreeCustomized({
-    ...block,
-    strings: block.strings.map((s) => ({ ...s, sort_order: order.get(s.id) ?? s.sort_order ?? 0 })),
-    assignments: { ...block.assignments, string_to_box },
-  });
+  const levels = levelsOf(block);
+  const siblings = [...levels]
+    .filter((level) => level.parent_kind === move.parent_kind && level.kind !== move.kind)
+    .sort((a, b) => a.order - b.order || a.kind.localeCompare(b.kind));
+  const index = Math.max(0, Math.min(move.index ?? siblings.length, siblings.length));
+  const ordered = siblings.map((level) => level.kind);
+  ordered.splice(index, 0, move.kind);
+  const order = new Map(ordered.map((kind, i) => [kind, i]));
+  const nextLevels = levels.map((level) => ({
+    ...level,
+    parent_kind: level.kind === move.kind ? move.parent_kind : level.parent_kind,
+    order: order.get(level.kind) ?? level.order,
+  }));
+  const hierarchy = block.hierarchy ?? DEFAULT_HIERARCHY;
+  return { ...block, hierarchy: { ...hierarchy, levels: nextLevels } };
 }

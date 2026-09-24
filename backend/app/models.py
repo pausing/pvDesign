@@ -320,6 +320,15 @@ class ItsAssignments(BaseModel):
     box_to_its: dict[str, str] = Field(default_factory=dict)
 
 
+ItsHierarchyType = Literal["its", "string_box", "table", "string", "module"]
+
+
+class ItsHierarchyLevel(BaseModel):
+    kind: ItsHierarchyType
+    parent_kind: Optional[ItsHierarchyType] = None
+    order: int = 0
+
+
 class ItsHierarchy(BaseModel):
     modules_per_string: int = Field(ge=1, default=28)
     strings_per_table: int = Field(ge=1, default=2)
@@ -327,14 +336,12 @@ class ItsHierarchy(BaseModel):
     string_box_count: int = Field(ge=0, default=8)
     its_count: int = Field(ge=0, default=1)
     auto_assign: bool = True
-    tree_customized: bool = False
+    levels: list[ItsHierarchyLevel] = Field(default_factory=list)
 
 
 class ItsHierarchyMove(BaseModel):
-    node_id: str
-    node_kind: Literal["its", "string_box", "table", "string"]
-    parent_id: Optional[str] = None
-    parent_kind: Literal["root", "its", "string_box", "unassigned"] = "root"
+    kind: ItsHierarchyType
+    parent_kind: Optional[ItsHierarchyType] = None
     index: Optional[int] = None
 
 
