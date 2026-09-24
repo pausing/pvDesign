@@ -11,47 +11,51 @@ export function ProjectHomePage() {
     return <div className="p-8 text-muted">Loading…</div>;
   }
 
-  const itsBlocks = itsDesignOf(project).blocks.length;
-  const itsHref =
-    itsBlocks > 0
-      ? `/projects/${project.id}/its/${itsDesignOf(project).blocks[0].id}/assets`
-      : `/projects/${project.id}/its`;
+  const design = itsDesignOf(project);
+  const first = design.blocks[0];
+  const layoutHref = first
+    ? `/projects/${project.id}/layout-config/${first.id}`
+    : `/projects/${project.id}/layout-config`;
+  const itsHref = first
+    ? `/projects/${project.id}/its/${first.id}/assets`
+    : `/projects/${project.id}/its`;
+  const blockLabel =
+    design.blocks.length === 0
+      ? "No PV blocks yet."
+      : `${design.blocks.length} PV block${design.blocks.length === 1 ? "" : "s"}`;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-8">
         <h1 className="text-3xl font-medium tracking-tight">{project.name}</h1>
         <p className="mt-2 max-w-2xl text-muted">
-          Two design modules in this project. Plant Design is the existing plant-wide catalog,
-          conceptual BOM, and block/row planner. ITS Design is a single PV-block workflow:
-          asset specs, layout, and string → string box → ITS grouping.
+          Two modules share one PV block. Place equipment in Layout configuration, then define
+          specs and electrical grouping in ITS Design.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="flex flex-col p-5">
           <div className="text-[11px] uppercase tracking-[0.16em] text-accent">Module</div>
-          <h2 className="mt-2 text-xl font-medium">Plant Design</h2>
+          <h2 className="mt-2 text-xl font-medium">Layout configuration</h2>
           <p className="mt-2 flex-1 text-[13px] text-muted">
-            Asset library, electrical hierarchy, BT/MV Excel import, conceptual BOM, and
-            plant layout of tracker blocks and stations.
+            Place table fields, string boxes, and the ITS. Table geometry syncs strings used by
+            ITS Design.
           </p>
-          <div className="mt-4 flex gap-2">
-            <Button variant="primary" onClick={() => navigate(`/projects/${project.id}/config`)}>
-              Open Config
+          <p className="mt-2 text-[12px] text-muted">{blockLabel}</p>
+          <div className="mt-4">
+            <Button variant="primary" onClick={() => navigate(layoutHref)}>
+              Open layout
             </Button>
-            <Button onClick={() => navigate(`/projects/${project.id}/layout`)}>Layout</Button>
           </div>
         </Card>
         <Card className="flex flex-col p-5">
           <div className="text-[11px] uppercase tracking-[0.16em] text-accent">Module</div>
           <h2 className="mt-2 text-xl font-medium">ITS Design</h2>
           <p className="mt-2 flex-1 text-[13px] text-muted">
-            Design one PV block: module/string/string-box/ITS specs, table-field layout, and
-            electrical grouping with overload and orphan checks.
+            Asset hierarchy and specs, then strings → string box → ITS grouping with orphan and
+            overload checks.
           </p>
-          <p className="mt-2 text-[12px] text-muted">
-            {itsBlocks === 0 ? "No PV blocks yet." : `${itsBlocks} PV block${itsBlocks === 1 ? "" : "s"}`}
-          </p>
+          <p className="mt-2 text-[12px] text-muted">{blockLabel}</p>
           <div className="mt-4">
             <Button variant="primary" onClick={() => navigate(itsHref)}>
               Open ITS Design
@@ -59,6 +63,17 @@ export function ProjectHomePage() {
           </div>
         </Card>
       </div>
+      <p className="mt-8 text-[12px] text-muted">
+        Older plant-wide catalog, conceptual BOM, BT/MV Excel, and plant layout live under{" "}
+        <button
+          type="button"
+          className="text-accent"
+          onClick={() => navigate(`/projects/${project.id}/plant/config`)}
+        >
+          Plant tools
+        </button>
+        .
+      </p>
     </div>
   );
 }

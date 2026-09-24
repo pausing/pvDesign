@@ -49,7 +49,7 @@ export function ProjectsPage() {
 
   const duplicate = async (id: string) => {
     const clone = await api.duplicateProject(id);
-    navigate(`/projects/${clone.id}/config`);
+    navigate(`/projects/${clone.id}`);
   };
 
   const exportOne = async (id: string, projectName: string) => {
@@ -61,7 +61,7 @@ export function ProjectsPage() {
     try {
       const data = (await pickJsonFile()) as Project;
       const imported = await api.importProject(data);
-      navigate(`/projects/${imported.id}/config`);
+      navigate(`/projects/${imported.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed");
     }
@@ -73,8 +73,8 @@ export function ProjectsPage() {
         <div>
           <h1 className="text-3xl font-medium tracking-tight">Projects</h1>
           <p className="mt-2 max-w-xl text-muted">
-            Utility-scale plant files. Each project holds Plant Design (catalog, hierarchy,
-            BT/MV import, layout) and ITS Design (one PV block: specs, layout, grouping).
+            Utility-scale plant files. Each project has Layout configuration (place tables,
+            string boxes, ITS) and ITS Design (specs and electrical grouping).
           </p>
         </div>
         <div className="flex gap-2">

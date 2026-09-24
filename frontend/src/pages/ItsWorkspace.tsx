@@ -16,7 +16,14 @@ export type ItsOutletContext = ProjectContext & {
   updateBlock: (updater: (block: ItsPvBlock) => ItsPvBlock) => void;
 };
 
-export function ItsWorkspace() {
+export type BlockModule = "layout" | "its";
+
+function blockPath(projectId: string, module: BlockModule, blockId: string, child?: string) {
+  if (module === "layout") return `/projects/${projectId}/layout-config/${blockId}`;
+  return `/projects/${projectId}/its/${blockId}/${child ?? "assets"}`;
+}
+
+export function PvBlockWorkspace({ module }: { module: BlockModule }) {
   const ctx = useOutletContext<ProjectContext>();
   const { id, blockId } = useParams();
   const navigate = useNavigate();
@@ -26,6 +33,12 @@ export function ItsWorkspace() {
 
   const design = itsDesignOf(ctx.project);
   const block = findItsBlock(design, blockId);
+  const title = module === "layout" ? "Layout configuration" : "ITS Design";
+
+  const goToBlock = (nextId: string, child?: string) => {
+    if (!id) return;
+    navigate(blockPath(id, module, nextId, child));
+  };
 
   const createBlock = async () => {
     if (!id) return;
@@ -36,7 +49,7 @@ export function ItsWorkspace() {
         ...p,
         its_design: replaceItsBlock(itsDesignOf(p), created),
       }));
-      navigate(`/projects/${id}/its/${created.id}/assets`);
+      goToBlock(created.id);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Could not create block");
     } finally {
@@ -50,14 +63,15 @@ export function ItsWorkspace() {
 
   if (!blockId) {
     if (design.blocks[0]) {
-      return <Navigate to={`/projects/${id}/its/${design.blocks[0].id}/assets`} replace />;
+      return <Navigate to={blockPath(id!, module, design.blocks[0].id)} replace />;
     }
     return (
       <div className="mx-auto max-w-lg px-6 py-12">
-        <h1 className="text-2xl font-medium">ITS Design</h1>
+        <h1 className="text-2xl font-medium">{title}</h1>
         <p className="mt-2 text-muted">
-          Create a PV block to define module/string/string-box/ITS specs, place the layout,
-          and assign strings to boxes and boxes to the skid.
+          {module === "layout"
+            ? "Create a PV block, then place tables, string boxes, and the ITS. Strings are generated from table geometry."
+            : "Create a PV block, then edit asset specs and assign strings → string box → ITS."}
         </p>
         <Card className="mt-6 space-y-3 p-4">
           <label className="flex flex-col gap-1 text-[12px] text-muted">
@@ -82,8 +96,12 @@ export function ItsWorkspace() {
     return (
       <div className="p-8 text-muted">
         This PV block was not found.{" "}
-        <button type="button" className="text-accent" onClick={() => navigate(`/projects/${id}/its`)}>
-          Back to ITS Design
+        <button
+          type="button"
+          className="text-accent"
+          onClick={() => navigate(module === "layout" ? `/projects/${id}/layout-config` : `/projects/${id}/its`)}
+        >
+          Back to {title}
         </button>
       </div>
     );
@@ -98,19 +116,22 @@ export function ItsWorkspace() {
     });
   };
 
-  const tabs = [
-    { to: "assets", label: "Assets" },
-    { to: "layout", label: "Layout & grouping" },
-  ];
+  const tabs =
+    module === "its"
+      ? [
+          { to: "assets", label: "Assets" },
+          { to: "grouping", label: "Grouping" },
+        ]
+      : [];
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b border-line bg-panel px-4 py-2">
-        <div className="text-[12px] uppercase tracking-[0.14em] text-accent">ITS Design</div>
+        <div className="text-[12px] uppercase tracking-[0.14em] text-accent">{title}</div>
         <select
           className="text-[13px]"
           value={block.id}
-          onChange={(e) => navigate(`/projects/${id}/its/${e.target.value}/assets`)}
+          onChange={(e) => goToBlock(e.target.value)}
         >
           {design.blocks.map((item) => (
             <option key={item.id} value={item.id}>
@@ -118,21 +139,35 @@ export function ItsWorkspace() {
             </option>
           ))}
         </select>
-        <nav className="flex gap-1">
-          {tabs.map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={`/projects/${id}/its/${block.id}/${tab.to}`}
-              className={({ isActive }) =>
-                `rounded-md px-3 py-1.5 text-[13px] ${
-                  isActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
-                }`
-              }
+        {tabs.length ? (
+          <nav className="flex gap-1">
+            {tabs.map((tab) => (
+              <NavLink
+                key={tab.to}
+                to={blockPath(id!, module, block.id, tab.to)}
+                className={({ isActive }) =>
+                  `rounded-md px-3 py-1.5 text-[13px] ${
+                    isActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
+                  }`
+                }
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+          </nav>
+        ) : (
+          <p className="text-[12px] text-muted">
+            Place equipment here. Group strings in{" "}
+            <button
+              type="button"
+              className="text-accent"
+              onClick={() => id && navigate(blockPath(id, "its", block.id, "grouping"))}
             >
-              {tab.label}
-            </NavLink>
-          ))}
-        </nav>
+              ITS Design
+            </button>
+            .
+          </p>
+        )}
         <div className="ml-auto flex gap-2">
           <Button
             variant="ghost"
@@ -146,7 +181,7 @@ export function ItsWorkspace() {
                     ...p,
                     its_design: replaceItsBlock(itsDesignOf(p), created),
                   }));
-                  navigate(`/projects/${id}/its/${created.id}/assets`);
+                  goToBlock(created.id);
                 })
                 .catch((err: Error) => window.alert(err.message));
             }}
@@ -164,7 +199,7 @@ export function ItsWorkspace() {
                     blocks: itsDesignOf(p).blocks.filter((b) => b.id !== block.id),
                   },
                 }));
-                navigate(`/projects/${id}/its`);
+                navigate(module === "layout" ? `/projects/${id}/layout-config` : `/projects/${id}/its`);
               });
             }}
           >
@@ -177,4 +212,12 @@ export function ItsWorkspace() {
       </div>
     </div>
   );
+}
+
+export function LayoutConfigWorkspace() {
+  return <PvBlockWorkspace module="layout" />;
+}
+
+export function ItsWorkspace() {
+  return <PvBlockWorkspace module="its" />;
 }
