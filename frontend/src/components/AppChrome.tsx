@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { useMe } from "../lib/useMe";
 
 export function UserGreeting() {
@@ -16,7 +16,9 @@ export function AppChrome() {
     <div className="flex h-full flex-col">
       <header className="flex h-11 shrink-0 items-center justify-between gap-4 border-b border-line bg-panel px-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-accent">PV Design</div>
+          <Link to="/" className="text-[11px] uppercase tracking-[0.18em] text-accent">
+            PV Design
+          </Link>
           <a
             href="https://portal.powerlearn.us/"
             className="text-[11px] uppercase tracking-[0.18em] text-muted hover:text-accent"

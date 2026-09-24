@@ -8,6 +8,7 @@ import type {
   ItsDesign,
   ItsPvBlock,
   ItsValidation,
+  AppModule,
   Project,
   ProjectCreate,
   ProjectSummary,
@@ -44,7 +45,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   me: () => request<PortalUser>("/pv/api/me"),
 
-  listProjects: () => request<ProjectSummary[]>("/pv/api/projects"),
+  listProjects: (module?: AppModule) =>
+    request<ProjectSummary[]>(module ? `/pv/api/projects?module=${module}` : "/pv/api/projects"),
 
   getProject: (id: string) => request<Project>(`/pv/api/projects/${id}`),
 

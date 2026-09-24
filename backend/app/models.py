@@ -368,6 +368,9 @@ class ItsValidation(BaseModel):
     warnings: list[ItsWarning] = Field(default_factory=list)
 
 
+AppModule = Literal["layout_config", "its_design"]
+
+
 class Project(BaseModel):
     id: str
     name: str
@@ -375,6 +378,7 @@ class Project(BaseModel):
     notes: str = ""
     owner: str = ""
     user_id: str = ""
+    module: AppModule = "layout_config"
     created_at: str
     updated_at: str
     catalog: list[AssetDefinition] = Field(default_factory=list)
@@ -397,6 +401,7 @@ class ProjectSummary(BaseModel):
     site: str
     owner: str = ""
     user_id: str = ""
+    module: AppModule = "layout_config"
     updated_at: str
     created_at: str
 
@@ -408,12 +413,14 @@ class ProjectCreate(BaseModel):
     owner: Optional[str] = None
     user_id: Optional[str] = None
     seed_catalog: bool = True
+    module: AppModule = "layout_config"
 
 
 class ProjectPatch(BaseModel):
     name: Optional[str] = None
     site: Optional[str] = None
     notes: Optional[str] = None
+    module: Optional[AppModule] = None
     catalog: Optional[List[AssetDefinition]] = None
     topology: Optional[List[TopologyNode]] = None
     layout: Optional[Layout] = None

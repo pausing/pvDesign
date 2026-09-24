@@ -334,6 +334,8 @@ export interface ItsValidation {
   warnings: ItsWarning[];
 }
 
+export type AppModule = "layout_config" | "its_design";
+
 export interface Project {
   id: string;
   name: string;
@@ -343,6 +345,7 @@ export interface Project {
   user_id: string;
   created_at: string;
   updated_at: string;
+  module?: AppModule;
   catalog: AssetDefinition[];
   topology: TopologyNode[];
   layout: Layout;
@@ -358,6 +361,7 @@ export interface ProjectSummary {
   site: string;
   owner?: string;
   user_id?: string;
+  module?: AppModule;
   updated_at: string;
   created_at: string;
 }
@@ -369,6 +373,7 @@ export interface ProjectCreate {
   owner?: string;
   user_id?: string;
   seed_catalog?: boolean;
+  module?: AppModule;
 }
 
 export const EMPTY_ASSET_FIELDS = {

@@ -196,8 +196,25 @@ def empty_project(
     seed_catalog: bool = True,
     owner: str = "",
     user_id: str = "",
+    module: str = "layout_config",
 ) -> Project:
     now = utc_now()
+    if module == "its_design":
+        return Project(
+            id=str(uuid4()),
+            name=name,
+            site=site,
+            notes=notes,
+            owner=owner,
+            user_id=user_id,
+            module="its_design",
+            created_at=now,
+            updated_at=now,
+            catalog=[],
+            topology=[],
+            layout=Layout(),
+            its_design=default_its_design() if seed_catalog else ItsDesign(),
+        )
     catalog = default_catalog() if seed_catalog else []
     topology = default_topology() if seed_catalog else None
     layout = default_layout() if seed_catalog else Layout()
@@ -210,6 +227,7 @@ def empty_project(
         notes=notes,
         owner=owner,
         user_id=user_id,
+        module="layout_config",
         created_at=now,
         updated_at=now,
         catalog=catalog,
@@ -225,11 +243,29 @@ def demo_project() -> Project:
         id="demo-100mw",
         name="Demo 100 MW",
         site="Atacama, Chile",
-        notes="Seeded utility-scale plant: 32 × 3.125 MW inverters, 1P trackers, 1500 V DC.",
+        notes="Layout configuration plant: 32 × 3.125 MW inverters, 1P trackers, 1500 V DC.",
+        module="layout_config",
         created_at=now,
         updated_at=now,
         catalog=default_catalog(),
         topology=default_topology(),
         layout=default_layout(),
+        its_design=default_its_design(),
+    )
+
+
+def demo_its_project() -> Project:
+    now = utc_now()
+    return Project(
+        id="demo-its-block",
+        name="Demo ITS block",
+        site="Atacama, Chile",
+        notes="Independent ITS Design plant: specs and string → string box → ITS grouping.",
+        module="its_design",
+        created_at=now,
+        updated_at=now,
+        catalog=[],
+        topology=[],
+        layout=Layout(),
         its_design=default_its_design(),
     )

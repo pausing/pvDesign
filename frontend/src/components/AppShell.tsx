@@ -1,24 +1,25 @@
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, downloadJson, pickJsonFile } from "../api/client";
 import { useProject } from "../lib/useProject";
-import type { Project } from "../types/project";
+import type { AppModule, Project } from "../types/project";
 import { Button, StatusDot } from "./ui";
 
-const plantTools = [
-  { to: "plant/config", label: "Catalog & BT/MV" },
-  { to: "plant/conceptual", label: "Conceptual" },
-  { to: "plant/layout", label: "Plant layout" },
+const layoutTools = [
+  { to: "tools/config", label: "Catalog & BT/MV" },
+  { to: "tools/conceptual", label: "Conceptual" },
+  { to: "tools/layout", label: "Plant layout" },
 ];
 
-export function AppShell() {
+export function AppShell({ module }: { module: AppModule }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const ctx = useProject(id);
-  const itsActive = /\/its(\/|$)/.test(location.pathname);
-  const layoutConfigActive = location.pathname.includes("/layout-config");
-  const plantActive = location.pathname.includes("/plant/");
-  const homeActive = Boolean(id) && /\/projects\/[^/]+$/.test(location.pathname);
+  const plantsHref = module === "layout_config" ? "/layout-config" : "/its";
+  const groupingActive = location.pathname.endsWith("/grouping");
+  const assetsActive = location.pathname.endsWith("/assets") || location.pathname.endsWith(`/${id}`);
+  const canvasActive = module === "layout_config" && !location.pathname.includes("/tools/");
+  const toolActive = location.pathname.includes("/tools/");
 
   const exportProject = () => {
     if (!ctx.project) return;
@@ -28,8 +29,8 @@ export function AppShell() {
   const importProject = async () => {
     try {
       const data = (await pickJsonFile()) as Project;
-      const imported = await api.importProject(data);
-      navigate(`/projects/${imported.id}`);
+      const imported = await api.importProject({ ...data, module });
+      navigate(module === "layout_config" ? `/layout-config/${imported.id}` : `/its/${imported.id}/assets`);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Import failed");
     }
@@ -40,70 +41,77 @@ export function AppShell() {
       <header className="flex h-12 shrink-0 items-center gap-4 border-b border-line bg-panel px-4">
         <button
           type="button"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(plantsHref)}
           className="text-[13px] text-muted hover:text-text"
         >
-          ← Projects
+          ← Plants
         </button>
         <div className="h-4 w-px bg-line" />
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-medium">
-            {ctx.project?.name ?? "…"}
+          <div className="truncate text-[11px] uppercase tracking-[0.14em] text-accent">
+            {module === "layout_config" ? "Layout configuration" : "ITS Design"}
           </div>
-          {ctx.project?.site || ctx.project?.owner ? (
-            <div className="truncate text-[11px] text-muted">
-              {[ctx.project?.site, ctx.project?.owner].filter(Boolean).join(" · ")}
-            </div>
-          ) : null}
+          <div className="truncate text-[13px] font-medium">{ctx.project?.name ?? "…"}</div>
         </div>
         <nav className="ml-4 flex flex-wrap items-center gap-1">
-          <NavLink
-            to="."
-            end
-            className={() =>
-              `rounded-md px-3 py-1.5 text-[13px] ${
-                homeActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
-              }`
-            }
-          >
-            Modules
-          </NavLink>
-          <NavLink
-            to="layout-config"
-            className={() =>
-              `rounded-md px-3 py-1.5 text-[13px] ${
-                layoutConfigActive
-                  ? "bg-accent-dim text-accent"
-                  : "text-muted hover:bg-raised hover:text-text"
-              }`
-            }
-          >
-            Layout configuration
-          </NavLink>
-          <NavLink
-            to="its"
-            className={() =>
-              `rounded-md px-3 py-1.5 text-[13px] ${
-                itsActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
-              }`
-            }
-          >
-            ITS Design
-          </NavLink>
-          <select
-            className={`ml-1 text-[12px] ${plantActive ? "text-accent" : "text-muted"}`}
-            value={plantTools.find((t) => location.pathname.includes(`/${t.to}`))?.to ?? ""}
-            onChange={(e) => {
-              if (e.target.value) navigate(e.target.value);
-            }}
-          >
-            <option value="">Plant tools…</option>
-            {plantTools.map((tool) => (
-              <option key={tool.to} value={tool.to}>
-                {tool.label}
-              </option>
-            ))}
-          </select>
+          {module === "layout_config" ? (
+            <>
+              <NavLink
+                to="."
+                end
+                className={() =>
+                  `rounded-md px-3 py-1.5 text-[13px] ${
+                    canvasActive
+                      ? "bg-accent-dim text-accent"
+                      : "text-muted hover:bg-raised hover:text-text"
+                  }`
+                }
+              >
+                Placement
+              </NavLink>
+              <select
+                className={`ml-1 text-[12px] ${toolActive ? "text-accent" : "text-muted"}`}
+                value={layoutTools.find((t) => location.pathname.includes(`/${t.to}`))?.to ?? ""}
+                onChange={(e) => {
+                  if (e.target.value) navigate(e.target.value);
+                }}
+              >
+                <option value="">Plant tools…</option>
+                {layoutTools.map((tool) => (
+                  <option key={tool.to} value={tool.to}>
+                    {tool.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              <NavLink
+                to="assets"
+                className={() =>
+                  `rounded-md px-3 py-1.5 text-[13px] ${
+                    assetsActive && !groupingActive
+                      ? "bg-accent-dim text-accent"
+                      : "text-muted hover:bg-raised hover:text-text"
+                  }`
+                }
+              >
+                Assets
+              </NavLink>
+              <NavLink
+                to="grouping"
+                className={() =>
+                  `rounded-md px-3 py-1.5 text-[13px] ${
+                    groupingActive
+                      ? "bg-accent-dim text-accent"
+                      : "text-muted hover:bg-raised hover:text-text"
+                  }`
+                }
+              >
+                Grouping
+              </NavLink>
+            </>
+          )}
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <StatusDot status={ctx.status} />
