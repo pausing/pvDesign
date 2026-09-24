@@ -30,6 +30,7 @@ export function useProject(id: string | undefined) {
           parameters: next.parameters,
           electrical_bt: next.electrical_bt,
           electrical_mv: next.electrical_mv,
+          its_design: next.its_design ?? { blocks: [] },
         })
         .then((saved) => {
           if (latest.current && latest.current.id === saved.id) {
@@ -57,12 +58,13 @@ export function useProject(id: string | undefined) {
           ...p,
           topology: asForest(p.topology),
           parameters: projectParameters(p),
+          its_design: p.its_design ?? { blocks: [] },
         };
         const reconciled = reconcileProject(normalized);
         latest.current = reconciled;
         setProject(reconciled);
         setStatus("ready");
-        if (reconciled !== p) persist(reconciled);
+        if (reconciled !== normalized) persist(reconciled);
       })
       .catch((err: Error) => {
         if (cancelled) return;

@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from app.its_design import default_its_design
 from app.models import (
     AssetDefinition,
     CableRun,
     InverterStation,
+    ItsDesign,
     Layout,
     Project,
     TopologyNode,
@@ -213,6 +215,7 @@ def empty_project(
         catalog=catalog,
         topology=topology,
         layout=layout,
+        its_design=default_its_design() if seed_catalog else ItsDesign(),
     )
 
 
@@ -228,4 +231,5 @@ def demo_project() -> Project:
         catalog=default_catalog(),
         topology=default_topology(),
         layout=default_layout(),
+        its_design=default_its_design(),
     )

@@ -243,6 +243,131 @@ def _as_topology_list(value: Any) -> Any:
     return [value]
 
 
+ItsAssetKind = Literal["module", "string", "string_box", "its", "tracker"]
+
+ITS_ASSET_KINDS: tuple[ItsAssetKind, ...] = (
+    "module",
+    "string",
+    "string_box",
+    "its",
+    "tracker",
+)
+
+ItsItemKind = Literal["table", "string_box", "its"]
+
+
+class ItsAssetSpec(BaseModel):
+    id: str
+    name: str
+    kind: ItsAssetKind
+    manufacturer: str = ""
+    model: str = ""
+    notes: str = ""
+    # Module
+    pmp_w: Optional[float] = None
+    voc_v: Optional[float] = None
+    isc_a: Optional[float] = None
+    vmp_v: Optional[float] = None
+    imp_a: Optional[float] = None
+    length_mm: Optional[float] = None
+    width_mm: Optional[float] = None
+    bifacial: Optional[bool] = None
+    # String
+    modules_in_series: Optional[int] = None
+    polarity_notes: str = ""
+    module_spec_id: Optional[str] = None
+    # String box
+    inputs: Optional[int] = None
+    fuse_rating_a: Optional[float] = None
+    outgoing_cable: str = ""
+    max_current_a: Optional[float] = None
+    max_voltage_v: Optional[float] = None
+    # ITS
+    inverter_count: Optional[int] = None
+    inverter_rating_kw: Optional[float] = None
+    transformer_mva: Optional[float] = None
+    transformer_mv_kv: Optional[float] = None
+    auxiliaries: str = ""
+    # Tracker / table
+    modules_per_tracker: Optional[int] = None
+    strings_per_tracker: Optional[int] = None
+    table_length_m: Optional[float] = None
+    table_width_m: Optional[float] = None
+
+
+class ItsPlacedItem(BaseModel):
+    id: str
+    name: str
+    kind: ItsItemKind
+    spec_id: Optional[str] = None
+    x: float = 80
+    y: float = 80
+    rows: int = Field(ge=1, default=4)
+    tables_per_row: int = Field(ge=1, default=8)
+
+
+class ItsString(BaseModel):
+    id: str
+    name: str
+    table_id: Optional[str] = None
+    spec_id: Optional[str] = None
+
+
+class ItsAssignments(BaseModel):
+    string_to_box: dict[str, str] = Field(default_factory=dict)
+    box_to_its: dict[str, str] = Field(default_factory=dict)
+
+
+class ItsPvBlock(BaseModel):
+    id: str
+    name: str
+    notes: str = ""
+    catalog: list[ItsAssetSpec] = Field(default_factory=list)
+    items: list[ItsPlacedItem] = Field(default_factory=list)
+    strings: list[ItsString] = Field(default_factory=list)
+    assignments: ItsAssignments = Field(default_factory=ItsAssignments)
+    view: LayoutView = Field(default_factory=LayoutView)
+
+
+class ItsDesign(BaseModel):
+    blocks: list[ItsPvBlock] = Field(default_factory=list)
+
+
+class ItsBlockCreate(BaseModel):
+    name: str = "PV block"
+    notes: str = ""
+    seed: bool = True
+
+
+class ItsBlockPatch(BaseModel):
+    name: Optional[str] = None
+    notes: Optional[str] = None
+    catalog: Optional[list[ItsAssetSpec]] = None
+    items: Optional[list[ItsPlacedItem]] = None
+    strings: Optional[list[ItsString]] = None
+    assignments: Optional[ItsAssignments] = None
+    view: Optional[LayoutView] = None
+
+
+class ItsWarning(BaseModel):
+    code: str
+    level: Literal["info", "warn", "fail"] = "warn"
+    message: str
+
+
+class ItsValidation(BaseModel):
+    block_id: str
+    table_count: int = 0
+    string_count: int = 0
+    string_box_count: int = 0
+    its_count: int = 0
+    assigned_strings: int = 0
+    orphan_strings: int = 0
+    orphan_boxes: int = 0
+    overloaded_boxes: int = 0
+    warnings: list[ItsWarning] = Field(default_factory=list)
+
+
 class Project(BaseModel):
     id: str
     name: str
@@ -258,6 +383,7 @@ class Project(BaseModel):
     parameters: ProjectParameters = Field(default_factory=ProjectParameters)
     electrical_bt: Optional[ElectricalBtConfig] = None
     electrical_mv: Optional[ElectricalMvConfig] = None
+    its_design: ItsDesign = Field(default_factory=ItsDesign)
 
     @field_validator("topology", mode="before")
     @classmethod
@@ -294,6 +420,7 @@ class ProjectPatch(BaseModel):
     parameters: Optional[ProjectParameters] = None
     electrical_bt: Optional[ElectricalBtConfig] = None
     electrical_mv: Optional[ElectricalMvConfig] = None
+    its_design: Optional[ItsDesign] = None
 
     @field_validator("topology", mode="before")
     @classmethod

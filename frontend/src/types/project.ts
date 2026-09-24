@@ -240,6 +240,100 @@ export interface PortalUser {
   admin: boolean | null;
 }
 
+export type ItsAssetKind = "module" | "string" | "string_box" | "its" | "tracker";
+export type ItsItemKind = "table" | "string_box" | "its";
+
+export interface ItsAssetSpec {
+  id: string;
+  name: string;
+  kind: ItsAssetKind;
+  manufacturer: string;
+  model: string;
+  notes: string;
+  pmp_w: number | null;
+  voc_v: number | null;
+  isc_a: number | null;
+  vmp_v: number | null;
+  imp_a: number | null;
+  length_mm: number | null;
+  width_mm: number | null;
+  bifacial: boolean | null;
+  modules_in_series: number | null;
+  polarity_notes: string;
+  module_spec_id: string | null;
+  inputs: number | null;
+  fuse_rating_a: number | null;
+  outgoing_cable: string;
+  max_current_a: number | null;
+  max_voltage_v: number | null;
+  inverter_count: number | null;
+  inverter_rating_kw: number | null;
+  transformer_mva: number | null;
+  transformer_mv_kv: number | null;
+  auxiliaries: string;
+  modules_per_tracker: number | null;
+  strings_per_tracker: number | null;
+  table_length_m: number | null;
+  table_width_m: number | null;
+}
+
+export interface ItsPlacedItem {
+  id: string;
+  name: string;
+  kind: ItsItemKind;
+  spec_id: string | null;
+  x: number;
+  y: number;
+  rows: number;
+  tables_per_row: number;
+}
+
+export interface ItsString {
+  id: string;
+  name: string;
+  table_id: string | null;
+  spec_id: string | null;
+}
+
+export interface ItsAssignments {
+  string_to_box: Record<string, string>;
+  box_to_its: Record<string, string>;
+}
+
+export interface ItsPvBlock {
+  id: string;
+  name: string;
+  notes: string;
+  catalog: ItsAssetSpec[];
+  items: ItsPlacedItem[];
+  strings: ItsString[];
+  assignments: ItsAssignments;
+  view: LayoutView;
+}
+
+export interface ItsDesign {
+  blocks: ItsPvBlock[];
+}
+
+export interface ItsWarning {
+  code: string;
+  level: "info" | "warn" | "fail";
+  message: string;
+}
+
+export interface ItsValidation {
+  block_id: string;
+  table_count: number;
+  string_count: number;
+  string_box_count: number;
+  its_count: number;
+  assigned_strings: number;
+  orphan_strings: number;
+  orphan_boxes: number;
+  overloaded_boxes: number;
+  warnings: ItsWarning[];
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -255,6 +349,7 @@ export interface Project {
   parameters?: ProjectParameters;
   electrical_bt?: ElectricalBtConfig | null;
   electrical_mv?: ElectricalMvConfig | null;
+  its_design?: ItsDesign;
 }
 
 export interface ProjectSummary {
@@ -307,3 +402,34 @@ export const EMPTY_ASSET_FIELDS = {
   ampacity_a: null,
   conductor: null,
 } satisfies Omit<AssetDefinition, "id" | "name" | "kind">;
+
+export const EMPTY_ITS_SPEC_FIELDS = {
+  manufacturer: "",
+  model: "",
+  notes: "",
+  pmp_w: null,
+  voc_v: null,
+  isc_a: null,
+  vmp_v: null,
+  imp_a: null,
+  length_mm: null,
+  width_mm: null,
+  bifacial: null,
+  modules_in_series: null,
+  polarity_notes: "",
+  module_spec_id: null,
+  inputs: null,
+  fuse_rating_a: null,
+  outgoing_cable: "",
+  max_current_a: null,
+  max_voltage_v: null,
+  inverter_count: null,
+  inverter_rating_kw: null,
+  transformer_mva: null,
+  transformer_mv_kv: null,
+  auxiliaries: "",
+  modules_per_tracker: null,
+  strings_per_tracker: null,
+  table_length_m: null,
+  table_width_m: null,
+} satisfies Omit<ItsAssetSpec, "id" | "name" | "kind">;

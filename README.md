@@ -1,6 +1,9 @@
 # PV Design
 
-Utility-scale PV plant design tool: asset library, hierarchical electrical topology, conceptual BOM, and a block/row layout planner.
+Utility-scale PV plant design tool. Each project has two modules:
+
+- **Plant Design** — asset library, hierarchical electrical topology, BT/MV Excel import, conceptual BOM, and a block/row layout planner.
+- **ITS Design** — one PV block end-to-end: module/string/string-box/ITS specs, table-field layout, and string → string box → ITS grouping.
 
 ## Run locally
 
@@ -22,7 +25,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. A seeded **Demo 100 MW** project is created on first API start.
+Open http://localhost:5173/pv/. A seeded **Demo 100 MW** project is created on first API start.
+
+Open a project → **ITS Design** for the PV-block module (`/pv/projects/:id/its`). Plant Design routes (`config`, `conceptual`, `layout`) are unchanged.
 
 Projects are stored as JSON files under `backend/data/projects/`.
 
