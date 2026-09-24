@@ -5,6 +5,7 @@ import {
   assignBoxesToIts,
   assignStringsToBox,
   itemsOf,
+  sortItems,
   specById,
   validateItsBlock,
 } from "../lib/itsDesign";
@@ -20,9 +21,9 @@ export function ItsGroupingPage() {
   const [selectedItsId, setSelectedItsId] = useState<string | null>(null);
 
   const validation = useMemo(() => validateItsBlock(block), [block]);
-  const tables = itemsOf(block, "table");
-  const boxes = itemsOf(block, "string_box");
-  const skids = itemsOf(block, "its");
+  const tables = sortItems(itemsOf(block, "table"));
+  const boxes = sortItems(itemsOf(block, "string_box"));
+  const skids = sortItems(itemsOf(block, "its"));
   const selectedBox = boxes.find((b) => b.id === selectedBoxId) ?? null;
   const selectedIts = skids.find((s) => s.id === selectedItsId) ?? null;
 

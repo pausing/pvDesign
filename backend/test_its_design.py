@@ -278,3 +278,142 @@ def test_apply_hierarchy_overload_when_boxes_too_few(client):
     assert report["string_count"] == 32
     assert report["overloaded_boxes"] == 1
     client.delete(f"/pv/api/projects/{project_id}")
+
+
+def test_move_hierarchy_reparents_table_and_box(client):
+    project_id = _create_project(client, seed=False)
+    block = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks",
+        json={"name": "Move me", "seed": False},
+    ).json()
+    applied = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/apply-hierarchy",
+        json={
+            "modules_per_string": 28,
+            "strings_per_table": 2,
+            "table_count": 8,
+            "string_box_count": 2,
+            "its_count": 2,
+            "auto_assign": True,
+        },
+    ).json()["block"]
+    table = next(item for item in applied["items"] if item["kind"] == "table")
+    boxes = [item for item in applied["items"] if item["kind"] == "string_box"]
+    skids = [item for item in applied["items"] if item["kind"] == "its"]
+    target_box = boxes[-1]
+    moved = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/move-hierarchy",
+        json={
+            "node_id": table["id"],
+            "node_kind": "table",
+            "parent_id": target_box["id"],
+            "parent_kind": "string_box",
+            "index": 0,
+        },
+    )
+    assert moved.status_code == 200
+    body = moved.json()["block"]
+    table_strings = [s["id"] for s in body["strings"] if s["table_id"] == table["id"]]
+    assert table_strings
+    assert all(body["assignments"]["string_to_box"][sid] == target_box["id"] for sid in table_strings)
+    assert body["hierarchy"]["tree_customized"] is True
+    assert body["hierarchy"]["auto_assign"] is False
+
+    moved_box = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/move-hierarchy",
+        json={
+            "node_id": boxes[0]["id"],
+            "node_kind": "string_box",
+            "parent_id": skids[-1]["id"],
+            "parent_kind": "its",
+            "index": 0,
+        },
+    )
+    assert moved_box.status_code == 200
+    after = moved_box.json()["block"]
+    assert after["assignments"]["box_to_its"][boxes[0]["id"]] == skids[-1]["id"]
+
+    reloaded = client.get(f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}").json()
+    assert reloaded["assignments"]["string_to_box"][table_strings[0]] == target_box["id"]
+    assert reloaded["assignments"]["box_to_its"][boxes[0]["id"]] == skids[-1]["id"]
+    client.delete(f"/pv/api/projects/{project_id}")
+
+
+def test_move_hierarchy_rejects_table_onto_its(client):
+    project_id = _create_project(client, seed=False)
+    block = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks",
+        json={"name": "Bad drop", "seed": True},
+    ).json()
+    table = next(item for item in block["items"] if item["kind"] == "table")
+    skid = next(item for item in block["items"] if item["kind"] == "its")
+    rejected = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/move-hierarchy",
+        json={
+            "node_id": table["id"],
+            "node_kind": "table",
+            "parent_id": skid["id"],
+            "parent_kind": "its",
+        },
+    )
+    assert rejected.status_code == 400
+    assert "string boxes" in rejected.json()["detail"].lower()
+    client.delete(f"/pv/api/projects/{project_id}")
+
+
+def test_apply_after_custom_move_keeps_parentage_unless_auto_assign(client):
+    project_id = _create_project(client, seed=False)
+    block = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks",
+        json={"name": "Preserve", "seed": False},
+    ).json()
+    applied = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/apply-hierarchy",
+        json={
+            "modules_per_string": 28,
+            "strings_per_table": 2,
+            "table_count": 4,
+            "string_box_count": 2,
+            "its_count": 1,
+            "auto_assign": True,
+        },
+    ).json()["block"]
+    table = next(item for item in applied["items"] if item["kind"] == "table")
+    boxes = [item for item in applied["items"] if item["kind"] == "string_box"]
+    client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/move-hierarchy",
+        json={
+            "node_id": table["id"],
+            "node_kind": "table",
+            "parent_id": boxes[-1]["id"],
+            "parent_kind": "string_box",
+        },
+    )
+    kept = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/apply-hierarchy",
+        json={
+            "modules_per_string": 28,
+            "strings_per_table": 2,
+            "table_count": 4,
+            "string_box_count": 2,
+            "its_count": 1,
+            "auto_assign": False,
+            "tree_customized": True,
+        },
+    ).json()["block"]
+    table_strings = [s["id"] for s in kept["strings"] if s["table_id"] == table["id"]]
+    assert all(kept["assignments"]["string_to_box"][sid] == boxes[-1]["id"] for sid in table_strings)
+
+    reset = client.post(
+        f"/pv/api/projects/{project_id}/its-design/blocks/{block['id']}/apply-hierarchy",
+        json={
+            "modules_per_string": 28,
+            "strings_per_table": 2,
+            "table_count": 4,
+            "string_box_count": 2,
+            "its_count": 1,
+            "auto_assign": True,
+        },
+    ).json()["block"]
+    assert reset["hierarchy"]["tree_customized"] is False
+    client.delete(f"/pv/api/projects/{project_id}")

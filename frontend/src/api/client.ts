@@ -7,6 +7,7 @@ import type {
   PortalUser,
   ItsDesign,
   ItsHierarchy,
+  ItsHierarchyMove,
   ItsPvBlock,
   ItsValidation,
   AppModule,
@@ -145,6 +146,12 @@ export const api = {
     request<{ block: ItsPvBlock; validation: ItsValidation }>(
       `/pv/api/projects/${id}/its-design/blocks/${blockId}/apply-hierarchy`,
       { method: "POST", body: JSON.stringify(hierarchy) },
+    ),
+
+  moveItsHierarchy: (id: string, blockId: string, move: ItsHierarchyMove) =>
+    request<{ block: ItsPvBlock; validation: ItsValidation }>(
+      `/pv/api/projects/${id}/its-design/blocks/${blockId}/move-hierarchy`,
+      { method: "POST", body: JSON.stringify(move) },
     ),
 
   syncItsStrings: (id: string, blockId: string) =>

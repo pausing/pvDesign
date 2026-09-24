@@ -5,15 +5,25 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 
 from app.its_design import (
+    HierarchyMoveError,
     apply_hierarchy,
     default_block,
     empty_block,
     find_block,
+    move_hierarchy_node,
     replace_block,
     sync_strings_from_tables,
     validate_block,
 )
-from app.models import ItsBlockCreate, ItsBlockPatch, ItsDesign, ItsHierarchy, ItsPvBlock, Project
+from app.models import (
+    ItsBlockCreate,
+    ItsBlockPatch,
+    ItsDesign,
+    ItsHierarchy,
+    ItsHierarchyMove,
+    ItsPvBlock,
+    Project,
+)
 from app import storage
 
 router = APIRouter(prefix="/api/projects", tags=["its-design"])
@@ -105,6 +115,19 @@ def apply_its_hierarchy(project_id: str, block_id: str, body: ItsHierarchy):
     saved = storage.save_project(project)
     applied = find_block(saved.its_design, block_id)
     return {"block": applied, "validation": validate_block(applied)}
+
+
+@router.post("/{project_id}/its-design/blocks/{block_id}/move-hierarchy")
+def move_its_hierarchy(project_id: str, block_id: str, body: ItsHierarchyMove):
+    project = _require_project(project_id)
+    try:
+        block = move_hierarchy_node(_require_block(project, block_id), body)
+    except HierarchyMoveError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    project.its_design = replace_block(project.its_design, block)
+    saved = storage.save_project(project)
+    moved = find_block(saved.its_design, block_id)
+    return {"block": moved, "validation": validate_block(moved)}
 
 
 @router.post("/{project_id}/its-design/blocks/{block_id}/sync-strings")

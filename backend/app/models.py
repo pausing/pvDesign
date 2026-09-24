@@ -304,6 +304,7 @@ class ItsPlacedItem(BaseModel):
     y: float = 80
     rows: int = Field(ge=1, default=4)
     tables_per_row: int = Field(ge=1, default=8)
+    sort_order: int = 0
 
 
 class ItsString(BaseModel):
@@ -311,6 +312,7 @@ class ItsString(BaseModel):
     name: str
     table_id: Optional[str] = None
     spec_id: Optional[str] = None
+    sort_order: int = 0
 
 
 class ItsAssignments(BaseModel):
@@ -325,6 +327,15 @@ class ItsHierarchy(BaseModel):
     string_box_count: int = Field(ge=0, default=8)
     its_count: int = Field(ge=0, default=1)
     auto_assign: bool = True
+    tree_customized: bool = False
+
+
+class ItsHierarchyMove(BaseModel):
+    node_id: str
+    node_kind: Literal["its", "string_box", "table", "string"]
+    parent_id: Optional[str] = None
+    parent_kind: Literal["root", "its", "string_box", "unassigned"] = "root"
+    index: Optional[int] = None
 
 
 class ItsPvBlock(BaseModel):
