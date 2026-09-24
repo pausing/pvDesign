@@ -286,6 +286,7 @@ export interface ItsPlacedItem {
   y: number;
   rows: number;
   tables_per_row: number;
+  sort_order?: number;
 }
 
 export interface ItsString {
@@ -293,6 +294,18 @@ export interface ItsString {
   name: string;
   table_id: string | null;
   spec_id: string | null;
+  sort_order?: number;
+}
+
+export type ItsHierarchyNodeKind = "its" | "string_box" | "table" | "string";
+export type ItsHierarchyParentKind = "root" | "its" | "string_box" | "unassigned";
+
+export interface ItsHierarchyMove {
+  node_id: string;
+  node_kind: ItsHierarchyNodeKind;
+  parent_id?: string | null;
+  parent_kind: ItsHierarchyParentKind;
+  index?: number | null;
 }
 
 export interface ItsAssignments {
@@ -307,6 +320,7 @@ export interface ItsHierarchy {
   string_box_count: number;
   its_count: number;
   auto_assign: boolean;
+  tree_customized?: boolean;
 }
 
 export interface ItsPvBlock {

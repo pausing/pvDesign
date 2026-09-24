@@ -8,6 +8,7 @@ from app.models import (
     ItsAssignments,
     ItsDesign,
     ItsHierarchy,
+    ItsHierarchyMove,
     ItsItemKind,
     ItsPlacedItem,
     ItsPvBlock,
@@ -126,6 +127,7 @@ def infer_hierarchy(block: ItsPvBlock) -> ItsHierarchy:
         string_box_count=len(boxes) or existing.string_box_count,
         its_count=len(skids) or existing.its_count,
         auto_assign=existing.auto_assign,
+        tree_customized=existing.tree_customized,
     )
 
 
@@ -141,12 +143,17 @@ def _resize_items(
     dx: float = 80,
     dy: float = 56,
 ) -> list[ItsPlacedItem]:
-    kept = [item for item in existing if item.kind == kind]
+    kept = sorted(
+        [item for item in existing if item.kind == kind],
+        key=lambda item: (item.sort_order, item.name, item.id),
+    )
     next_items: list[ItsPlacedItem] = []
     for index in range(count):
         if index < len(kept):
             item = kept[index]
-            next_items.append(item.model_copy(update={"spec_id": spec_id or item.spec_id}))
+            next_items.append(
+                item.model_copy(update={"spec_id": spec_id or item.spec_id, "sort_order": item.sort_order or index})
+            )
             continue
         col = index % 4
         row = index // 4
@@ -158,6 +165,7 @@ def _resize_items(
                 spec_id=spec_id,
                 x=base_x + col * dx,
                 y=base_y + row * dy,
+                sort_order=index,
             )
         )
     return next_items
@@ -208,6 +216,7 @@ def apply_hierarchy(block: ItsPvBlock, hierarchy: Optional[ItsHierarchy] = None)
                 y=first.y if first else 48,
                 rows=rows,
                 tables_per_row=tpr,
+                sort_order=first.sort_order if first else 0,
             )
         ]
 
@@ -247,7 +256,187 @@ def apply_hierarchy(block: ItsPvBlock, hierarchy: Optional[ItsHierarchy] = None)
         next_block = next_block.model_copy(
             update={"assignments": ItsAssignments(string_to_box=string_to_box, box_to_its=box_to_its)}
         )
+        hier = hier.model_copy(update={"tree_customized": False})
+        next_block = next_block.model_copy(update={"hierarchy": hier})
     return next_block
+
+
+class HierarchyMoveError(ValueError):
+    """Invalid hierarchy drag: message is safe to show in the UI."""
+
+
+def _sorted_items(items: list[ItsPlacedItem]) -> list[ItsPlacedItem]:
+    return sorted(items, key=lambda item: (item.sort_order, item.name, item.id))
+
+
+def _reindex_kind(items: list[ItsPlacedItem], kind: ItsItemKind, ordered_ids: list[str]) -> list[ItsPlacedItem]:
+    order = {item_id: index for index, item_id in enumerate(ordered_ids)}
+    next_items: list[ItsPlacedItem] = []
+    for item in items:
+        if item.id in order:
+            next_items.append(item.model_copy(update={"sort_order": order[item.id]}))
+        elif item.kind == kind:
+            next_items.append(item)
+        else:
+            next_items.append(item)
+    return next_items
+
+
+def _mark_tree_customized(block: ItsPvBlock) -> ItsPvBlock:
+    hier = block.hierarchy.model_copy(update={"auto_assign": False, "tree_customized": True})
+    return block.model_copy(update={"hierarchy": hier})
+
+
+def _table_string_ids(block: ItsPvBlock, table_id: str) -> list[str]:
+    return [string.id for string in block.strings if string.table_id == table_id]
+
+
+def validate_hierarchy_move(block: ItsPvBlock, move: ItsHierarchyMove) -> Optional[str]:
+    """Return a short rejection reason, or None if the move is allowed."""
+    boxes = {item.id: item for item in items_of(block, "string_box")}
+    skids = {item.id: item for item in items_of(block, "its")}
+    tables = {item.id: item for item in items_of(block, "table")}
+    strings = {string.id: string for string in block.strings}
+
+    if move.node_kind == "its":
+        if move.node_id not in skids:
+            return "That ITS is not in this hierarchy."
+        if move.parent_kind not in ("root", "unassigned"):
+            return "ITS stays at the root of the tree."
+        return None
+
+    if move.node_kind == "string_box":
+        if move.node_id not in boxes:
+            return "That string box is not in this hierarchy."
+        if move.parent_kind == "its":
+            if not move.parent_id or move.parent_id not in skids:
+                return "Drop a string box on an ITS."
+            return None
+        if move.parent_kind in ("root", "unassigned"):
+            return None
+        return "String boxes belong under an ITS, or in Unassigned."
+
+    if move.node_kind == "table":
+        if move.node_id not in tables:
+            return "That table field is not in this hierarchy."
+        if move.parent_kind == "its":
+            return "Tables feed string boxes, not ITS directly."
+        if move.parent_kind == "string_box":
+            if not move.parent_id or move.parent_id not in boxes:
+                return "Drop a table on a string box."
+            return None
+        if move.parent_kind in ("root", "unassigned"):
+            return None
+        return "Tables belong under a string box, or in Unassigned."
+
+    if move.node_kind == "string":
+        if move.node_id not in strings:
+            return "That string is not in this hierarchy."
+        if move.parent_kind == "its":
+            return "Strings feed string boxes, not ITS directly."
+        if move.parent_kind == "table":
+            return "String parentage follows the table field; assign the table instead."
+        if move.parent_kind == "string_box":
+            if not move.parent_id or move.parent_id not in boxes:
+                return "Drop a string on a string box."
+            return None
+        if move.parent_kind in ("root", "unassigned"):
+            return None
+        return "Strings belong under a string box, or in Unassigned."
+
+    return "Unknown hierarchy node."
+
+
+def move_hierarchy_node(block: ItsPvBlock, move: ItsHierarchyMove) -> ItsPvBlock:
+    """Reparent / reorder an instance block. Updates assignments so grouping stays in sync."""
+    reason = validate_hierarchy_move(block, move)
+    if reason:
+        raise HierarchyMoveError(reason)
+
+    items = list(block.items)
+    assignments = block.assignments
+    strings = list(block.strings)
+
+    if move.node_kind == "its":
+        skids = _sorted_items(items_of(block, "its"))
+        ordered = [item.id for item in skids if item.id != move.node_id]
+        index = 0 if move.index is None else max(0, min(move.index, len(ordered)))
+        ordered.insert(index, move.node_id)
+        return _mark_tree_customized(block.model_copy(update={"items": _reindex_kind(items, "its", ordered)}))
+
+    if move.node_kind == "string_box":
+        box_to_its = dict(assignments.box_to_its)
+        if move.parent_kind == "its" and move.parent_id:
+            box_to_its[move.node_id] = move.parent_id
+            siblings = [
+                item.id
+                for item in _sorted_items(items_of(block, "string_box"))
+                if box_to_its.get(item.id) == move.parent_id and item.id != move.node_id
+            ]
+        else:
+            box_to_its.pop(move.node_id, None)
+            siblings = [
+                item.id
+                for item in _sorted_items(items_of(block, "string_box"))
+                if item.id not in box_to_its and item.id != move.node_id
+            ]
+        index = 0 if move.index is None else max(0, min(move.index, len(siblings)))
+        siblings.insert(index, move.node_id)
+        next_items = _reindex_kind(items, "string_box", siblings)
+        return _mark_tree_customized(
+            block.model_copy(
+                update={
+                    "items": next_items,
+                    "assignments": assignments.model_copy(update={"box_to_its": box_to_its}),
+                }
+            )
+        )
+
+    if move.node_kind == "table":
+        string_ids = _table_string_ids(block, move.node_id)
+        string_to_box = dict(assignments.string_to_box)
+        if move.parent_kind == "string_box" and move.parent_id:
+            for sid in string_ids:
+                string_to_box[sid] = move.parent_id
+        else:
+            for sid in string_ids:
+                string_to_box.pop(sid, None)
+        tables = [item.id for item in _sorted_items(items_of(block, "table")) if item.id != move.node_id]
+        index = 0 if move.index is None else max(0, min(move.index, len(tables)))
+        tables.insert(index, move.node_id)
+        return _mark_tree_customized(
+            block.model_copy(
+                update={
+                    "items": _reindex_kind(items, "table", tables),
+                    "assignments": assignments.model_copy(update={"string_to_box": string_to_box}),
+                }
+            )
+        )
+
+    if move.node_kind == "string":
+        string_to_box = dict(assignments.string_to_box)
+        if move.parent_kind == "string_box" and move.parent_id:
+            string_to_box[move.node_id] = move.parent_id
+        else:
+            string_to_box.pop(move.node_id, None)
+        ordered = [string.id for string in strings if string.id != move.node_id]
+        index = 0 if move.index is None else max(0, min(move.index, len(ordered)))
+        ordered.insert(index, move.node_id)
+        order = {sid: i for i, sid in enumerate(ordered)}
+        next_strings = [
+            string.model_copy(update={"sort_order": order.get(string.id, string.sort_order)})
+            for string in strings
+        ]
+        return _mark_tree_customized(
+            block.model_copy(
+                update={
+                    "strings": next_strings,
+                    "assignments": assignments.model_copy(update={"string_to_box": string_to_box}),
+                }
+            )
+        )
+
+    raise HierarchyMoveError("Unknown hierarchy node.")
 
 
 def validate_block(block: ItsPvBlock) -> ItsValidation:
