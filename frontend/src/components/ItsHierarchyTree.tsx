@@ -141,10 +141,17 @@ export function ItsHierarchyTree({
   const tables = sortItems(itemsOf(block, "table"));
   const assignedBoxIds = new Set(Object.keys(block.assignments.box_to_its));
   const unassignedBoxes = boxes.filter((box) => !assignedBoxIds.has(box.id));
-  const unassignedTables = tables.filter((table) => {
-    const parent = tableParentBoxId(block, table.id);
-    return parent == null || parent === "split";
-  });
+  const unassignedTables = tables.filter((table) => tableParentBoxId(block, table.id) == null);
+
+  const splitTablesForIts = (itsId: string) =>
+    tables.filter((table) => {
+      if (tableParentBoxId(block, table.id) !== "split") return false;
+      return block.strings.some((string) => {
+        if (string.table_id !== table.id) return false;
+        const boxId = block.assignments.string_to_box[string.id];
+        return Boolean(boxId && block.assignments.box_to_its[boxId] === itsId);
+      });
+    });
 
   const applyResolved = (target: DropTarget) => {
     if (!drag) return;
@@ -237,6 +244,7 @@ export function ItsHierarchyTree({
       >
         {skids.map((skid) => {
           const childBoxes = boxes.filter((box) => block.assignments.box_to_its[box.id] === skid.id);
+          const splitTables = splitTablesForIts(skid.id);
           return (
             <TreeRow
               key={skid.id}
@@ -265,7 +273,19 @@ export function ItsHierarchyTree({
                   highlight={highlight}
                 />
               ))}
-              {childBoxes.length === 0 ? (
+              {splitTables.map((table) => (
+                <TableRow
+                  key={table.id}
+                  block={block}
+                  table={table}
+                  drag={drag}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                  dropProps={dropProps}
+                  highlight={highlight}
+                />
+              ))}
+              {childBoxes.length === 0 && splitTables.length === 0 ? (
                 <p className="pl-8 text-[11px] text-muted">No string boxes under this ITS.</p>
               ) : null}
             </TreeRow>
@@ -340,7 +360,7 @@ function BoxBranch({
     <TreeRow
       color={ITS_KIND_COLOR.string_box}
       label={box.name}
-      detail={`${used} string(s)`}
+      detail={`${used} strings`}
       kind="string_box"
       id={box.id}
       depth={1}
