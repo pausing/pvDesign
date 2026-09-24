@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app.identity import portal_identity
-from app.routers import projects
+from app.routers import its_design, projects
 from app import storage
 
 
@@ -68,6 +68,7 @@ api_app.add_middleware(
 )
 
 api_app.include_router(projects.router)
+api_app.include_router(its_design.router)
 
 
 @api_app.get("/api/health")

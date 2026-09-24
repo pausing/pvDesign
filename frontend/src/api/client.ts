@@ -5,6 +5,9 @@ import type {
   ElectricalMvConfig,
   ElectricalMvPreview,
   PortalUser,
+  ItsDesign,
+  ItsPvBlock,
+  ItsValidation,
   Project,
   ProjectCreate,
   ProjectSummary,
@@ -108,6 +111,41 @@ export const api = {
       { method: "POST", body },
     );
   },
+
+  getItsDesign: (id: string) => request<ItsDesign>(`/pv/api/projects/${id}/its-design`),
+
+  putItsDesign: (id: string, design: ItsDesign) =>
+    request<ItsDesign>(`/pv/api/projects/${id}/its-design`, {
+      method: "PUT",
+      body: JSON.stringify(design),
+    }),
+
+  createItsBlock: (id: string, body: { name?: string; notes?: string; seed?: boolean }) =>
+    request<ItsPvBlock>(`/pv/api/projects/${id}/its-design/blocks`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  getItsBlock: (id: string, blockId: string) =>
+    request<ItsPvBlock>(`/pv/api/projects/${id}/its-design/blocks/${blockId}`),
+
+  patchItsBlock: (id: string, blockId: string, body: Partial<ItsPvBlock>) =>
+    request<ItsPvBlock>(`/pv/api/projects/${id}/its-design/blocks/${blockId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  deleteItsBlock: (id: string, blockId: string) =>
+    request<void>(`/pv/api/projects/${id}/its-design/blocks/${blockId}`, { method: "DELETE" }),
+
+  syncItsStrings: (id: string, blockId: string) =>
+    request<{ block: ItsPvBlock; validation: ItsValidation }>(
+      `/pv/api/projects/${id}/its-design/blocks/${blockId}/sync-strings`,
+      { method: "POST" },
+    ),
+
+  validateItsBlock: (id: string, blockId: string) =>
+    request<ItsValidation>(`/pv/api/projects/${id}/its-design/blocks/${blockId}/validate`),
 
   importMvElectrical: (id: string, file: File, mode: "replace" | "merge") => {
     const body = new FormData();

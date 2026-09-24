@@ -33,7 +33,7 @@ export function ProjectsPage() {
         site,
         seed_catalog: seed,
       });
-      navigate(`/projects/${project.id}/config`);
+      navigate(`/projects/${project.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Create failed");
     } finally {
@@ -73,8 +73,8 @@ export function ProjectsPage() {
         <div>
           <h1 className="text-3xl font-medium tracking-tight">Projects</h1>
           <p className="mt-2 max-w-xl text-muted">
-            Utility-scale plant files. Each project holds an asset library, electrical hierarchy,
-            and a block/row layout.
+            Utility-scale plant files. Each project holds Plant Design (catalog, hierarchy,
+            BT/MV import, layout) and ITS Design (one PV block: specs, layout, grouping).
           </p>
         </div>
         <div className="flex gap-2">
@@ -123,7 +123,7 @@ export function ProjectsPage() {
               <button
                 type="button"
                 className="min-w-0 flex-1 text-left"
-                onClick={() => navigate(`/projects/${p.id}/config`)}
+                onClick={() => navigate(`/projects/${p.id}`)}
               >
                 <div className="font-medium">{p.name}</div>
                 <div className="text-[12px] text-muted">
@@ -131,7 +131,7 @@ export function ProjectsPage() {
                   {new Date(p.updated_at).toLocaleString()}
                 </div>
               </button>
-              <Button onClick={() => navigate(`/projects/${p.id}/config`)}>Open</Button>
+              <Button onClick={() => navigate(`/projects/${p.id}`)}>Open</Button>
               <Button variant="ghost" onClick={() => void exportOne(p.id, p.name)}>
                 Export
               </Button>

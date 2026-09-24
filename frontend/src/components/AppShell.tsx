@@ -1,10 +1,10 @@
-import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, downloadJson, pickJsonFile } from "../api/client";
 import { useProject } from "../lib/useProject";
 import type { Project } from "../types/project";
 import { Button, StatusDot } from "./ui";
 
-const tabs = [
+const plantTabs = [
   { to: "config", label: "Config" },
   { to: "conceptual", label: "Conceptual" },
   { to: "layout", label: "Layout" },
@@ -13,7 +13,10 @@ const tabs = [
 export function AppShell() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const ctx = useProject(id);
+  const itsActive = location.pathname.includes("/its");
+  const homeActive = Boolean(id) && location.pathname.endsWith(`/projects/${id}`);
 
   const exportProject = () => {
     if (!ctx.project) return;
@@ -51,22 +54,43 @@ export function AppShell() {
             </div>
           ) : null}
         </div>
-        <nav className="ml-4 flex gap-1">
-          {tabs.map((tab) => (
+        <nav className="ml-4 flex flex-wrap items-center gap-1">
+          <NavLink
+            to="."
+            end
+            className={() =>
+              `rounded-md px-3 py-1.5 text-[13px] ${
+                homeActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
+              }`
+            }
+          >
+            Modules
+          </NavLink>
+          <span className="px-1 text-[11px] uppercase tracking-wide text-muted">Plant</span>
+          {plantTabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}
               className={({ isActive }) =>
                 `rounded-md px-3 py-1.5 text-[13px] ${
-                  isActive
-                    ? "bg-accent-dim text-accent"
-                    : "text-muted hover:bg-raised hover:text-text"
+                  isActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
                 }`
               }
             >
               {tab.label}
             </NavLink>
           ))}
+          <span className="px-1 text-[11px] uppercase tracking-wide text-muted">ITS</span>
+          <NavLink
+            to="its"
+            className={() =>
+              `rounded-md px-3 py-1.5 text-[13px] ${
+                itsActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
+              }`
+            }
+          >
+            ITS Design
+          </NavLink>
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <StatusDot status={ctx.status} />
