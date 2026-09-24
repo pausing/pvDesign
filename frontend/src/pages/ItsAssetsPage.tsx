@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { Button, Card, Field, NumInput, TextInput } from "../components/ui";
+import { TypeHierarchyPreview } from "../components/ItsHierarchyTree";
+import { Button, Field, NumInput, TextInput } from "../components/ui";
 import { firstSpec, newItsSpec } from "../lib/itsDesign";
 import { ITS_ASSET_KINDS, ITS_KIND_COLOR, ITS_KIND_FIELDS, ITS_KIND_LABEL } from "../lib/itsKinds";
 import type { ItsOutletContext } from "./ItsWorkspace";
@@ -57,12 +58,13 @@ export function ItsAssetsPage() {
           <div>
             <h2 className="text-[15px] font-medium">Asset specs</h2>
             <p className="text-[12px] text-muted">
-              Define module, string, tracker, string box, and ITS ratings. Then set quantities on
-              Hierarchy.
+              Define module, string, tracker, string box, and ITS ratings. Then set type order on
+              Hierarchy and counts on Quantities.
             </p>
           </div>
           <div className="flex items-center gap-2">
           <Button onClick={() => id && navigate(`/its/${id}/hierarchy`)}>Set hierarchy</Button>
+          <Button onClick={() => id && navigate(`/its/${id}/quantities`)}>Set quantities</Button>
           <select
             className="text-[13px]"
             defaultValue=""
@@ -140,9 +142,9 @@ export function ItsAssetsPage() {
         </div>
       </section>
       <aside className="overflow-auto p-4">
-        <h3 className="text-[13px] font-medium">Hierarchy</h3>
-        <p className="mb-3 text-[12px] text-muted">Typical feed for this block.</p>
-        <HierarchyTree blockName={block.name} catalog={block.catalog} />
+        <h3 className="text-[13px] font-medium">Type order</h3>
+        <p className="mb-3 text-[12px] text-muted">Conceptual stack from Hierarchy.</p>
+        <TypeHierarchyPreview block={block} />
       </aside>
     </div>
   );
@@ -262,75 +264,5 @@ function SpecForm({
         />
       </Field>
     </div>
-  );
-}
-
-function HierarchyTree({
-  blockName,
-  catalog,
-}: {
-  blockName: string;
-  catalog: ItsAssetSpec[];
-}) {
-  const its = catalog.find((a) => a.kind === "its");
-  const box = catalog.find((a) => a.kind === "string_box");
-  const string = catalog.find((a) => a.kind === "string");
-  const tracker = catalog.find((a) => a.kind === "tracker");
-  const module =
-    catalog.find((a) => a.id === string?.module_spec_id) ?? catalog.find((a) => a.kind === "module");
-
-  const rows: { label: string; detail: string; color: string }[] = [
-    {
-      label: blockName,
-      detail: "PV block",
-      color: "#3dcc8c",
-    },
-    {
-      label: its?.name ?? "ITS (not defined)",
-      detail: its
-        ? `${its.inverter_count ?? "?"} × ${its.inverter_rating_kw ?? "?"} kW · ${its.transformer_mva ?? "?"} MVA @ ${its.transformer_mv_kv ?? "?"} kV`
-        : "Add an ITS spec",
-      color: ITS_KIND_COLOR.its,
-    },
-    {
-      label: box?.name ?? "String box (not defined)",
-      detail: box
-        ? `${box.inputs ?? "?"} inputs · fuse ${box.fuse_rating_a ?? "?"} A · ${box.outgoing_cable || "no outgoing cable"}`
-        : "Add a string box spec",
-      color: ITS_KIND_COLOR.string_box,
-    },
-    {
-      label: string?.name ?? "String (not defined)",
-      detail: string
-        ? `${string.modules_in_series ?? "?"} modules in series${string.polarity_notes ? ` · ${string.polarity_notes}` : ""}`
-        : "Add a string spec",
-      color: ITS_KIND_COLOR.string,
-    },
-    {
-      label: tracker?.name ?? "Tracker (optional)",
-      detail: tracker
-        ? `${tracker.modules_per_tracker ?? "?"} modules · ${tracker.strings_per_tracker ?? "?"} strings / table`
-        : "Optional table geometry",
-      color: ITS_KIND_COLOR.tracker,
-    },
-    {
-      label: module?.name ?? "Module (not defined)",
-      detail: module ? `${module.pmp_w ?? "?"} Wp${module.bifacial ? " · bifacial" : ""}` : "Add a module spec",
-      color: ITS_KIND_COLOR.module,
-    },
-  ];
-
-  return (
-    <Card className="divide-y divide-line">
-      {rows.map((row, index) => (
-        <div key={row.label} className="px-3 py-2" style={{ paddingLeft: 12 + index * 10 }}>
-          <div className="flex items-center gap-2 text-[13px]">
-            <span className="h-2 w-2 rounded-full" style={{ background: row.color }} />
-            {row.label}
-          </div>
-          <div className="pl-4 text-[11px] text-muted">{row.detail}</div>
-        </div>
-      ))}
-    </Card>
   );
 }

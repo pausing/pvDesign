@@ -67,13 +67,13 @@ export function ItsGroupingPage() {
           </p>
           {validation.string_count === 0 || validation.string_box_count === 0 || validation.its_count === 0 ? (
             <p className="mt-2 text-[12px] text-warn">
-              Grouping needs instances from Hierarchy.{" "}
+              Grouping needs instances from Quantities.{" "}
               <button
                 type="button"
                 className="text-accent"
-                onClick={() => id && navigate(`/its/${id}/hierarchy`)}
+                onClick={() => id && navigate(`/its/${id}/quantities`)}
               >
-                Define hierarchy first
+                Set quantities first
               </button>
             </p>
           ) : null}
