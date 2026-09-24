@@ -122,7 +122,7 @@ export function ItsWorkspace() {
           {tabs.map((tab) => (
             <NavLink
               key={tab.to}
-              to={tab.to}
+              to={`/projects/${id}/its/${block.id}/${tab.to}`}
               className={({ isActive }) =>
                 `rounded-md px-3 py-1.5 text-[13px] ${
                   isActive ? "bg-accent-dim text-accent" : "text-muted hover:bg-raised hover:text-text"
